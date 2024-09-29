@@ -6,7 +6,8 @@ int main(int argc, char *argv[])
 {
     // Parse input arguments.
     argumentParser parser;
-    parser.parseArguments(argc, argv, parser.arguments);
+    inputArguments args;
+    parser.parseArguments(argc, argv, args);
 
     udpConnection();
 }
