@@ -1,9 +1,7 @@
-#
-#ignore all csv files except ldap-lidi-ascii.csv
-#ignore all csv files except ldap-lidi-utf8.csv
 
 *.txt
 udp-client
+dns-monitor
 /.vscode
 /obj
 
