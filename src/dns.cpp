@@ -1,10 +1,5 @@
 #include "../include/dns.h"
 
-#include <iostream>
-#include <cstring>
-#include <ctime>
-#include <arpa/inet.h>
-
 // Function to get current date and time in the required format
 void getCurrentDateTime(char *buffer, size_t bufferSize)
 {
