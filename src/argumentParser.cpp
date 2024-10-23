@@ -71,7 +71,7 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
     }
 
     // Print all the parsed parameters here
-    printf("\n\n");
+    printf("\n");
     printf("Parsed Arguments:\n");
     if (!out.interface.empty())
         printf("  Interface: %s\n", out.interface.c_str());
@@ -82,5 +82,5 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
     if (!out.translationsFile.empty())
         printf("  Translations File: %s\n", out.translationsFile.c_str());
     printf("  Verbose mode: %s\n", out.verbose ? "Enabled" : "Disabled");
-    printf("\n\n");
+    printf("\n");
 }

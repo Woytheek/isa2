@@ -1,50 +1,80 @@
 #include "../include/udp.h"
 #include "../include/dns.h"
 
-#define PORT 1053       // DNS uses port 53
+#define PORT 1053       // DNS uses port 1053
 #define BUFFER_SIZE 512 // Maximum DNS message size over UDP
+
+int udp_socket; // Global variable for the UDP socket
+
+// Signal handler for SIGINT
+void signalHandler(int signum)
+{
+    printf("\nTerminating the DNS server gracefully...\n");
+    if (udp_socket >= 0) {
+        close(udp_socket); // Close the socket if it's open
+    }
+    exit(signum); // Exit the program
+}
 
 int udpConnection(inputArguments args)
 {
     // Step 1: Create a UDP socket
-    int udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (udp_socket < 0)
     {
-        printf("Error: Could not create socket\n");
+        perror("Error: Could not create socket");
         return -1;
     }
 
-    // Step 2: Bind the socket to port 53 (DNS port)
+    // Step 2: Bind the socket to the IP address of eth0
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY; // Listen on all available interfaces
-    server_addr.sin_port = htons(PORT);       // Host-to-network byte order for port 53
+    server_addr.sin_port = htons(PORT); // Host-to-network byte order for port 1053
 
     if (bind(udp_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
-        printf("Error: Bind failed\n");
+        perror("Error: Bind failed");
         close(udp_socket);
         return -1;
     }
 
     printf("Listening for DNS messages on port %d...\n", PORT);
 
+    // Register signal handler for SIGINT
+    signal(SIGINT, signalHandler);
+
+    // Set a timeout for recvfrom
+    struct timeval tv;
+    tv.tv_sec = 1;  // 1 second timeout
+    tv.tv_usec = 0;
+
+    if (setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv)) < 0) {
+        perror("Error: Setting socket options failed");
+        close(udp_socket);
+        return -1;
+    }
+
     // Step 3: Listen for incoming DNS packets
-    while (true)
+    while (1)
     {
         char buffer[BUFFER_SIZE];
         struct sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
         memset(buffer, 0, BUFFER_SIZE); // Clear the buffer
 
-        // Receive UDP packet (recvfrom is a blocking call)
+        // Receive UDP packet (recvfrom is a blocking call, but with timeout)
         ssize_t bytes_received = recvfrom(udp_socket, buffer, BUFFER_SIZE, 0,
                                           (struct sockaddr *)&client_addr, &client_addr_len);
 
         if (bytes_received < 0)
         {
-            printf("Error: Failed to receive packet\n");
+            if (errno == EWOULDBLOCK) {
+                // Timeout occurred, continue to loop
+                continue; 
+            }
+            perror("Error: Failed to receive packet");
         }
         else
         {
@@ -57,6 +87,7 @@ int udpConnection(inputArguments args)
             inet_ntop(AF_INET, &(server_addr.sin_addr), dstIP, INET_ADDRSTRLEN);
 
             printf("\nReceived DNS message from %s:%d\n", srcIP, srcPort);
+            fflush(stdout);  // Ensure the output is flushed immediately
 
             // Step 4: Parse and print DNS message, passing source and destination IP
             parseDNSMessage(buffer, bytes_received, args.verbose, srcIP, dstIP);
@@ -65,6 +96,5 @@ int udpConnection(inputArguments args)
 
     // Close the socket (never reached in this infinite loop)
     close(udp_socket);
-
     return 0;
 }

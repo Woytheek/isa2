@@ -1,7 +1,7 @@
 # Compiler and flags
 CC = g++
 CFLAGS = -Wall -std=c++14 -g -fconcepts -Wextra -Werror
-LDFLAGS = -lm
+LDFLAGS = -lm -lpcap
 
 # Directories
 SRCDIR = src
@@ -39,8 +39,8 @@ clean:
 
 # Run the DNS monitor (requires sudo for privileged port)
 run: $(TARGET)
-	sudo ./dns-monitor
+	./dns-monitor
 
 # Run tests by launching the DNS monitor and using 'dig' as a subprocess
-tests:
-	dig @127.0.0.1 -p 1053 example.com
+tests: 
+	./dns-monitor & nslookup -port=1053 seznam.cz 127.0.0.1
