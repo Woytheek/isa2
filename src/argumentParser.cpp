@@ -30,7 +30,7 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
             {
                 err(1, "Incorrect usage of -i. An interface name is expected.");
             }
-            out.interface = argv[i + 1]; // Assuming out has a field for interface
+            out.interface = argv[i + 1]; // Interface
             ++i;
         }
         else if (argument == "-p")
@@ -39,15 +39,13 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
             {
                 err(1, "Incorrect usage of -p. A PCAP file name is expected.");
             }
-            out.pcapFile = argv[i + 1]; // Assuming out has a field for pcap file
+            out.pcapFile = argv[i + 1]; // PCAP file
             ++i;
         }
-
-        if (argument == "-v")
+        else if (argument == "-v")
         {
             out.verbose = true; // Set verbose flag to true
         }
-
         else if (argument == "-d")
         {
             if (i + 1 >= argc || argv[i + 1][0] == '-')
@@ -71,4 +69,18 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
             err(1, "Unknown argument: %s\n", argument.c_str());
         }
     }
+
+    // Print all the parsed parameters here
+    printf("\n\n");
+    printf("Parsed Arguments:\n");
+    if (!out.interface.empty())
+        printf("  Interface: %s\n", out.interface.c_str());
+    if (!out.pcapFile.empty())
+        printf("  PCAP File: %s\n", out.pcapFile.c_str());
+    if (!out.domainsFile.empty())
+        printf("  Domains File: %s\n", out.domainsFile.c_str());
+    if (!out.translationsFile.empty())
+        printf("  Translations File: %s\n", out.translationsFile.c_str());
+    printf("  Verbose mode: %s\n", out.verbose ? "Enabled" : "Disabled");
+    printf("\n\n");
 }

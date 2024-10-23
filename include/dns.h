@@ -13,4 +13,4 @@ struct DNSHeader
     uint16_t arCount; // Number of additional records
 };
 
-void parseDNSMessage(char *buffer, ssize_t size);
+void parseDNSMessage(char *buffer, ssize_t size, bool verbose, const char *srcIP, const char *dstIP);

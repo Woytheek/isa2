@@ -1,6 +1,7 @@
 #pragma once
 
 #include "include.h"
+#include "argumentParser.h"
 #include "dns.h"
 
-int udpConnection();
+int udpConnection(inputArguments args);

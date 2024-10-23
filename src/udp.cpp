@@ -1,9 +1,10 @@
 #include "../include/udp.h"
+#include "../include/dns.h"
 
 #define PORT 1053       // DNS uses port 53
 #define BUFFER_SIZE 512 // Maximum DNS message size over UDP
 
-int udpConnection()
+int udpConnection(inputArguments args)
 {
     // Step 1: Create a UDP socket
     int udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -47,10 +48,18 @@ int udpConnection()
         }
         else
         {
-            printf("\nReceived DNS message from %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+            // Get source IP and port from client_addr (source of the packet)
+            char *srcIP = inet_ntoa(client_addr.sin_addr);
+            int srcPort = ntohs(client_addr.sin_port);
 
-            // Step 4: Parse and print DNS message
-            parseDNSMessage(buffer, bytes_received);
+            // Get destination IP (server's IP, your machine)
+            char dstIP[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &(server_addr.sin_addr), dstIP, INET_ADDRSTRLEN);
+
+            printf("\nReceived DNS message from %s:%d\n", srcIP, srcPort);
+
+            // Step 4: Parse and print DNS message, passing source and destination IP
+            parseDNSMessage(buffer, bytes_received, args.verbose, srcIP, dstIP);
         }
     }
 

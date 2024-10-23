@@ -9,5 +9,5 @@ int main(int argc, char *argv[])
     inputArguments args;
     parser.parseArguments(argc, argv, args);
 
-    udpConnection();
+    udpConnection(args);
 }
