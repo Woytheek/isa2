@@ -53,7 +53,6 @@ void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP,
     printf("\n[Question Section]\n");
     if (ntohs(dnsHeader->qdCount) > 0)
     {
-        printf("Otázky: %d\n", ntohs(dnsHeader->qdCount));
         for (int i = sizeof(DNSHeader); i < size; ++i)
         {
             printf("%02X ", (unsigned char)buffer[i]);
@@ -77,15 +76,14 @@ void parseDNSMessage(char *buffer, ssize_t size, bool verbose, const char *srcIP
 
     DNSHeader *dnsHeader = (DNSHeader *)buffer;
 
-    // Rozhodnutí mezi zjednodušeným a detailním výstupem
     if (verbose)
     {
-        printf("---VERBOSE---\n");
         printVerboseDNS(dnsHeader, srcIP, dstIP, size, buffer);
     }
     else
     {
-        printf("---SIMPLE---\n");
         printSimplifiedDNS(dnsHeader, srcIP, dstIP);
     }
 }
+
+

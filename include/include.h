@@ -15,3 +15,6 @@
 #include <netinet/udp.h>
 
 using namespace std;
+
+#define PORT 1053       // DNS uses port 1053
+#define BUFFER_SIZE 512 // Maximum DNS message size over UDP

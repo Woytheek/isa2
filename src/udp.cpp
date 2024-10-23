@@ -1,9 +1,6 @@
 #include "../include/udp.h"
 #include "../include/dns.h"
 
-#define PORT 1053       // DNS uses port 1053
-#define BUFFER_SIZE 512 // Maximum DNS message size over UDP
-
 int udp_socket; // Global variable for the UDP socket
 
 // Signal handler for SIGINT
