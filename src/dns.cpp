@@ -65,25 +65,39 @@ void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP,
     printf("====================\n");
 }
 
-// Upravená funkce parseDNSMessage
-void parseDNSMessage(char *buffer, ssize_t size, bool verbose, const char *srcIP, const char *dstIP)
+void parseDNSMessage(char *buffer, ssize_t size, bool verbose)
 {
-    if ((size_t)size < sizeof(DNSHeader))
+    // Assuming Ethernet header (14 bytes), extract the IP header
+    struct ip *ipHeader = (struct ip *)(buffer + 14); // Skip Ethernet header
+
+    // Extract source and destination IP addresses
+    char srcIP[INET_ADDRSTRLEN];
+    char dstIP[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(ipHeader->ip_src), srcIP, INET_ADDRSTRLEN);
+    inet_ntop(AF_INET, &(ipHeader->ip_dst), dstIP, INET_ADDRSTRLEN);
+
+    // Skip Ethernet and IP headers to reach the DNS section
+    char *dnsPayload = buffer + 14 + (ipHeader->ip_hl * 4); // IP header length is ip_hl * 4
+
+    // Calculate DNS size: total size - ethernet header - IP header
+    ssize_t dnsSize = size - (14 + (ipHeader->ip_hl * 4));
+
+    // Ensure valid DNS packet size
+    if (dnsSize < (ssize_t)sizeof(DNSHeader))
     {
-        printf("Invalid DNS packet size\n");
+        printf("Invalid DNS packet after IP header\n");
         return;
     }
 
-    DNSHeader *dnsHeader = (DNSHeader *)buffer;
+    DNSHeader *dnsHeader = (DNSHeader *)dnsPayload; // Point to the DNS header
 
+    // Check if verbose mode is enabled
     if (verbose)
     {
-        printVerboseDNS(dnsHeader, srcIP, dstIP, size, buffer);
+        printVerboseDNS(dnsHeader, srcIP, dstIP, dnsSize, dnsPayload);
     }
     else
     {
         printSimplifiedDNS(dnsHeader, srcIP, dstIP);
     }
 }
-
-

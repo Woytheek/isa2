@@ -44,28 +44,21 @@ int parsePCAPFile(inputArguments args)
     const u_char *packet;
     int dnsPacketCount = 0;
     int packetCount = 0;
+
+    // Loop to read each packet
     while ((packet = pcap_next(handle, &header)) != NULL)
     {
         packetCount++;
+
+        // If this is a DNS packet, process it
         if (isDNSPacket(packet, header.len))
         {
             dnsPacketCount++;
 
-            // Extract the IP header
-            struct ip *ipHeader = (struct ip *)(packet + 14); // Assuming Ethernet header (14 bytes)
-
-            // Extract source and destination IP addresses
-            char srcIP[INET_ADDRSTRLEN];
-            char dstIP[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, &(ipHeader->ip_src), srcIP, INET_ADDRSTRLEN);
-            inet_ntop(AF_INET, &(ipHeader->ip_dst), dstIP, INET_ADDRSTRLEN);
-
-            // Extract and print DNS information
-            parseDNSMessage((char *)packet + 14 + (ipHeader->ip_hl * 4), // Skip Ethernet and IP headers
-                            header.len - (14 + (ipHeader->ip_hl * 4)),   // Remaining size for DNS
-                            args.verbose,
-                            srcIP,
-                            dstIP);
+            // Call the updated parseDNSMessage function
+            parseDNSMessage((char *)packet, // The entire packet, starting from the Ethernet header
+                            header.len,     // The total packet length
+                            args.verbose);  // Verbosity flag
         }
     }
 

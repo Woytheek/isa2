@@ -75,19 +75,7 @@ int udpConnection(inputArguments args)
         }
         else
         {
-            // Get source IP and port from client_addr (source of the packet)
-            char *srcIP = inet_ntoa(client_addr.sin_addr);
-            int srcPort = ntohs(client_addr.sin_port);
-
-            // Get destination IP (server's IP, your machine)
-            char dstIP[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, &(server_addr.sin_addr), dstIP, INET_ADDRSTRLEN);
-
-            printf("\nReceived DNS message from %s:%d\n", srcIP, srcPort);
-            fflush(stdout);  // Ensure the output is flushed immediately
-
-            // Step 4: Parse and print DNS message, passing source and destination IP
-            parseDNSMessage(buffer, bytes_received, args.verbose, srcIP, dstIP);
+            parseDNSMessage(buffer, bytes_received, args.verbose);
         }
     }
 
