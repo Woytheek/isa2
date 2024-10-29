@@ -14,6 +14,6 @@ struct DNSHeader
 };
 
 void getCurrentDateTime(char *buffer, size_t bufferSize);
-void parseDNSMessage(char *buffer, ssize_t size, bool verbose);
-void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP);
-void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, char *buffer);
+void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, struct pcap_pkthdr *header);
+void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, char *buffer, struct pcap_pkthdr *header);
+void parseDNSMessage(char *packet, ssize_t size, struct pcap_pkthdr header, bool verbose);

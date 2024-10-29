@@ -10,11 +10,15 @@ void getCurrentDateTime(char *buffer, size_t bufferSize)
 }
 
 // Funkce pro zjednodušený výpis DNS zpráv
-void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP)
+void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, struct pcap_pkthdr *header)
 {
+    // Formátování časové značky z `pcap_pkthdr`
+    struct tm *timeinfo;
     char dateTime[20];
-    getCurrentDateTime(dateTime, sizeof(dateTime));
+    timeinfo = localtime(&header->ts.tv_sec); // Převod sekund na lokální čas
+    strftime(dateTime, sizeof(dateTime), "%Y-%m-%d %H:%M:%S", timeinfo); // Formátování do řetězce
 
+    // Výpis DNS informací
     char qr = (ntohs(dnsHeader->flags) & 0x8000) ? 'R' : 'Q';
     int qdCount = ntohs(dnsHeader->qdCount);
     int anCount = ntohs(dnsHeader->anCount);
@@ -26,30 +30,32 @@ void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dst
 }
 
 // Funkce pro detailní výpis DNS zpráv
-void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, char *buffer)
+void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, char *buffer, struct pcap_pkthdr *header)
 {
+    // Získání timestampu z pcap_pkthdr
+    struct tm *timeinfo;
     char dateTime[20];
-    getCurrentDateTime(dateTime, sizeof(dateTime));
+    timeinfo = localtime(&header->ts.tv_sec); // Používá tv_sec z pcap_pkthdr
+    strftime(dateTime, sizeof(dateTime), "%Y-%m-%d %H:%M:%S", timeinfo);
 
-    printf("Timestamp: %s\n", dateTime);
+    printf("Timestamp: %s.%06ld\n", dateTime, header->ts.tv_usec); // Přidání mikrosekund
     printf("SrcIP: %s\n", srcIP);
     printf("DstIP: %s\n", dstIP);
-    printf("SrcPort: UDP/53\n"); // Statický port DNS serveru
-    printf("DstPort: UDP\n");    // Port klienta by měl být dynamický
+    printf("SrcPort: UDP/53\n");
+    printf("DstPort: UDP\n");
 
     printf("Identifier: 0x%X\n", ntohs(dnsHeader->id));
     printf("Flags: QR=%d, OPCODE=%d, AA=%d, TC=%d, RD=%d, RA=%d, AD=%d, CD=%d, RCODE=%d\n",
-           (ntohs(dnsHeader->flags) & 0x8000) >> 15, // QR
-           (ntohs(dnsHeader->flags) & 0x7800) >> 11, // OPCODE
-           (ntohs(dnsHeader->flags) & 0x0400) >> 10, // AA
-           (ntohs(dnsHeader->flags) & 0x0200) >> 9,  // TC
-           (ntohs(dnsHeader->flags) & 0x0100) >> 8,  // RD
-           (ntohs(dnsHeader->flags) & 0x0080) >> 7,  // RA
-           (ntohs(dnsHeader->flags) & 0x0020) >> 5,  // AD
-           (ntohs(dnsHeader->flags) & 0x0010) >> 4,  // CD
-           (ntohs(dnsHeader->flags) & 0x000F));      // RCODE
+           (ntohs(dnsHeader->flags) & 0x8000) >> 15,
+           (ntohs(dnsHeader->flags) & 0x7800) >> 11,
+           (ntohs(dnsHeader->flags) & 0x0400) >> 10,
+           (ntohs(dnsHeader->flags) & 0x0200) >> 9,
+           (ntohs(dnsHeader->flags) & 0x0100) >> 8,
+           (ntohs(dnsHeader->flags) & 0x0080) >> 7,
+           (ntohs(dnsHeader->flags) & 0x0020) >> 5,
+           (ntohs(dnsHeader->flags) & 0x0010) >> 4,
+           (ntohs(dnsHeader->flags) & 0x000F));
 
-    // Výpis sekce "Question"
     printf("\n[Question Section]\n");
     if (ntohs(dnsHeader->qdCount) > 0)
     {
@@ -60,44 +66,44 @@ void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP,
         printf("\n");
     }
 
-    // Další sekce (Answer, Authority, Additional) by měly být zpracovány podobně.
-    // Toto je ukázka, lze rozšířit podle potřeby:
     printf("====================\n");
 }
 
-void parseDNSMessage(char *buffer, ssize_t size, bool verbose)
+void parseDNSMessage(char *packet, ssize_t size, struct pcap_pkthdr header, bool verbose)
 {
-    // Assuming Ethernet header (14 bytes), extract the IP header
-    struct ip *ipHeader = (struct ip *)(buffer + 14); // Skip Ethernet header
+    // Předpokládáme Ethernetový header (14 bajtů), extrahujeme IP header
+    struct ip *ipHeader = (struct ip *)(packet + 14); // Skip Ethernet header
 
-    // Extract source and destination IP addresses
+    // Extrakce zdrojové a cílové IP adresy
     char srcIP[INET_ADDRSTRLEN];
     char dstIP[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(ipHeader->ip_src), srcIP, INET_ADDRSTRLEN);
     inet_ntop(AF_INET, &(ipHeader->ip_dst), dstIP, INET_ADDRSTRLEN);
 
-    // Skip Ethernet and IP headers to reach the DNS section
-    char *dnsPayload = buffer + 14 + (ipHeader->ip_hl * 4); // IP header length is ip_hl * 4
+    // Přeskočíme Ethernet a IP headery k dosažení DNS sekce
+    char *dnsPayload = packet + 14 + (ipHeader->ip_hl * 4); // Délka IP headeru je ip_hl * 4
 
-    // Calculate DNS size: total size - ethernet header - IP header
+    // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header
     ssize_t dnsSize = size - (14 + (ipHeader->ip_hl * 4));
 
-    // Ensure valid DNS packet size
+    // Zajištění, že velikost DNS paketu je validní
     if (dnsSize < (ssize_t)sizeof(DNSHeader))
     {
         printf("Invalid DNS packet after IP header\n");
         return;
     }
 
-    DNSHeader *dnsHeader = (DNSHeader *)dnsPayload; // Point to the DNS header
+    // Ukazatel na DNS header
+    DNSHeader *dnsHeader = (DNSHeader *)dnsPayload;
 
-    // Check if verbose mode is enabled
+    // Zkontrolujeme, zda je zapnutý podrobný režim
     if (verbose)
     {
-        printVerboseDNS(dnsHeader, srcIP, dstIP, dnsSize, dnsPayload);
+        // Předáme &header jako ukazatel na strukturu pcap_pkthdr
+        printVerboseDNS(dnsHeader, srcIP, dstIP, dnsSize, dnsPayload, &header);
     }
     else
     {
-        printSimplifiedDNS(dnsHeader, srcIP, dstIP);
+        printSimplifiedDNS(dnsHeader, srcIP, dstIP, &header);
     }
 }

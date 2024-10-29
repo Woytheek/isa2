@@ -1,5 +1,6 @@
 #include "../include/udp.h"
 #include "../include/dns.h"
+#include <sys/time.h>
 
 int udp_socket; // Global variable for the UDP socket
 
@@ -75,7 +76,14 @@ int udpConnection(inputArguments args)
         }
         else
         {
-            parseDNSMessage(buffer, bytes_received, args.verbose);
+            // Create a pcap_pkthdr and set values
+            struct pcap_pkthdr header;
+            header.len = bytes_received;
+            header.caplen = bytes_received;
+            gettimeofday(&header.ts, NULL);  // Get current timestamp
+
+            // Call parseDNSMessage with the correct parameters
+            parseDNSMessage(buffer, bytes_received, header, args.verbose);
         }
     }
 
