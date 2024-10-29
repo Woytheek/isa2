@@ -15,7 +15,7 @@ void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dst
     // Formátování časové značky z `pcap_pkthdr`
     struct tm *timeinfo;
     char dateTime[20];
-    timeinfo = localtime(&header->ts.tv_sec); // Převod sekund na lokální čas
+    timeinfo = localtime(&header->ts.tv_sec);                            // Převod sekund na lokální čas
     strftime(dateTime, sizeof(dateTime), "%Y-%m-%d %H:%M:%S", timeinfo); // Formátování do řetězce
 
     // Výpis DNS informací
@@ -85,6 +85,10 @@ void parseDNSMessage(char *packet, ssize_t size, struct pcap_pkthdr header, bool
 
     // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header
     ssize_t dnsSize = size - (14 + (ipHeader->ip_hl * 4));
+
+    printf("Celková velikost paketu: %zd bytů\n", size);
+    printf("Velikost IP headeru: %d * 4 = %d bytů\n", ipHeader->ip_hl, ipHeader->ip_hl * 4);
+    printf("Velikost DNS payloadu: %zd bytů\n", dnsSize);
 
     // Zajištění, že velikost DNS paketu je validní
     if (dnsSize < (ssize_t)sizeof(DNSHeader))
