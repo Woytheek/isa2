@@ -1,12 +1,14 @@
 #include "../include/dns.h"
 
-// Function to get current date and time in the required format
-void getCurrentDateTime(char *buffer, size_t bufferSize)
+void print_dns_header(const struct DNSHeader *dnsHeader)
 {
-    time_t now = time(0);
-    struct tm tstruct;
-    tstruct = *localtime(&now);
-    strftime(buffer, bufferSize, "%Y-%m-%d %H:%M:%S", &tstruct);
+    const uint8_t *bytes = (const uint8_t *)dnsHeader;
+    printf("DNS Header (hex): ");
+    for (size_t i = 0; i < sizeof(struct DNSHeader); i++)
+    {
+        printf("%02x ", bytes[i]);
+    }
+    printf("\n");
 }
 
 // Funkce pro zjednodušený výpis DNS zpráv
@@ -80,15 +82,11 @@ void parseDNSMessage(char *packet, ssize_t size, struct pcap_pkthdr header, bool
     inet_ntop(AF_INET, &(ipHeader->ip_src), srcIP, INET_ADDRSTRLEN);
     inet_ntop(AF_INET, &(ipHeader->ip_dst), dstIP, INET_ADDRSTRLEN);
 
-    // Přeskočíme Ethernet a IP headery k dosažení DNS sekce
-    char *dnsPayload = packet + 14 + (ipHeader->ip_hl * 4); // Délka IP headeru je ip_hl * 4
+    // Přeskočíme Ethernet, IP a UDP headery k dosažení DNS sekce
+    char *dnsPayload = packet + 14 + (ipHeader->ip_hl * 4) + 8; // 8 bajtů pro délku UDP headeru
 
-    // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header
-    ssize_t dnsSize = size - (14 + (ipHeader->ip_hl * 4));
-
-    printf("Celková velikost paketu: %zd bytů\n", size);
-    printf("Velikost IP headeru: %d * 4 = %d bytů\n", ipHeader->ip_hl, ipHeader->ip_hl * 4);
-    printf("Velikost DNS payloadu: %zd bytů\n", dnsSize);
+    // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
+    ssize_t dnsSize = size - (14 + (ipHeader->ip_hl * 4) + 8);
 
     // Zajištění, že velikost DNS paketu je validní
     if (dnsSize < (ssize_t)sizeof(DNSHeader))

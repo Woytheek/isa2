@@ -58,7 +58,7 @@ int parsePCAPFile(inputArguments args)
             // Call the updated parseDNSMessage function, passing the header
             parseDNSMessage((char *)packet, // Entire packet, starting from Ethernet header
                             header.len,     // Total packet length
-                            header,        // Pointer to pcap_pkthdr for timestamp
+                            header,         // Pointer to pcap_pkthdr for timestamp
                             args.verbose);  // Verbosity flag
         }
     }

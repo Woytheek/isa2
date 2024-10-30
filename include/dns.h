@@ -13,7 +13,7 @@ struct DNSHeader
     uint16_t arCount; // Number of additional records
 };
 
-void getCurrentDateTime(char *buffer, size_t bufferSize);
+void print_dns_header(const struct DNSHeader *dnsHeader);
 void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, struct pcap_pkthdr *header);
 void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, char *buffer, struct pcap_pkthdr *header);
 void parseDNSMessage(char *packet, ssize_t size, struct pcap_pkthdr header, bool verbose);
