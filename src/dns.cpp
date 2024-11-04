@@ -88,6 +88,9 @@ void parseDNSMessage(char *packet, ssize_t size, struct pcap_pkthdr header, bool
     // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
     ssize_t dnsSize = size - (14 + (ipHeader->ip_hl * 4) + 8);
 
+
+    printf("%ld\n", size);
+
     // Zajištění, že velikost DNS paketu je validní
     if (dnsSize < (ssize_t)sizeof(DNSHeader))
     {

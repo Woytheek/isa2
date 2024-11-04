@@ -10,11 +10,12 @@
 #include <err.h>
 #include <signal.h>
 #include <stdlib.h>
-#include <pcap.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
+#include <string.h>
+#include <ifaddrs.h>
 
 using namespace std;
 
-#define PORT 1053       // DNS uses port 1053
+#define PORT 53         // DNS uses port 1053
 #define BUFFER_SIZE 512 // Maximum DNS message size over UDP
