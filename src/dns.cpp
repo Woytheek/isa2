@@ -1,14 +1,17 @@
 #include "../include/dns.h"
 
-void print_dns_header(const struct DNSHeader *dnsHeader)
+void printBytes(char *data, int size)
 {
-    const uint8_t *bytes = (const uint8_t *)dnsHeader;
-    printf("DNS Header (hex): ");
-    for (size_t i = 0; i < sizeof(struct DNSHeader); i++)
+    for (int i = 0; i < size; ++i)
     {
-        printf("%02x ", bytes[i]);
+        // Print each byte in hex format with leading zeros
+        printf("%02x", data[i]);
+        if (i < size - 1)
+        {
+            printf(" "); // Print space between bytes
+        }
     }
-    printf("\n");
+    printf("\n"); // End with a newline
 }
 
 // Funkce pro zjednodušený výpis DNS zpráv
@@ -88,8 +91,11 @@ void parseDNSMessage(char *packet, ssize_t size, struct pcap_pkthdr header, bool
     // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
     ssize_t dnsSize = size - (14 + (ipHeader->ip_hl * 4) + 8);
 
-
-    printf("%ld\n", size);
+    printBytes(packet, size);
+    printf("size: %ld\n", size);
+    printf("dnsSize: %ld\n", dnsSize);
+    printf("ipHeader->ip_hl: %d\n", ipHeader->ip_hl);
+    printf("(ssize_t)sizeof(DNSHeader): %ld\n", (ssize_t)sizeof(DNSHeader));
 
     // Zajištění, že velikost DNS paketu je validní
     if (dnsSize < (ssize_t)sizeof(DNSHeader))

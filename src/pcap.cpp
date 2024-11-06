@@ -41,7 +41,7 @@ int parsePCAPFile(inputArguments args)
     }
 
     struct pcap_pkthdr header;
-    const u_char *packet;
+    const unsigned char *packet;
     int dnsPacketCount = 0;
     int packetCount = 0;
 
