@@ -1,6 +1,6 @@
 #include "../include/dns.h"
 
-void printBytes(char *data, int size)
+void printBytes(unsigned char *data, int size)
 {
     for (int i = 0; i < size; ++i)
     {
@@ -35,7 +35,7 @@ void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dst
 }
 
 // Funkce pro detailní výpis DNS zpráv
-void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, char *buffer, struct pcap_pkthdr *header)
+void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, unsigned char *buffer, struct pcap_pkthdr *header)
 {
     // Získání timestampu z pcap_pkthdr
     struct tm *timeinfo;
@@ -74,7 +74,7 @@ void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP,
     printf("====================\n");
 }
 
-void parseDNSMessage(char *packet, ssize_t size, struct pcap_pkthdr header, bool verbose)
+void parseDNSMessage(unsigned char *packet, ssize_t size, struct pcap_pkthdr header, bool verbose)
 {
     // Předpokládáme Ethernetový header (14 bajtů), extrahujeme IP header
     struct ip *ipHeader = (struct ip *)(packet + 14); // Skip Ethernet header
@@ -86,7 +86,7 @@ void parseDNSMessage(char *packet, ssize_t size, struct pcap_pkthdr header, bool
     inet_ntop(AF_INET, &(ipHeader->ip_dst), dstIP, INET_ADDRSTRLEN);
 
     // Přeskočíme Ethernet, IP a UDP headery k dosažení DNS sekce
-    char *dnsPayload = packet + 14 + (ipHeader->ip_hl * 4) + 8; // 8 bajtů pro délku UDP headeru
+    unsigned char *dnsPayload = packet + 14 + (ipHeader->ip_hl * 4) + 8; // 8 bajtů pro délku UDP headeru
 
     // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
     ssize_t dnsSize = size - (14 + (ipHeader->ip_hl * 4) + 8);

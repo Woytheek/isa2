@@ -170,7 +170,7 @@ int udpConnection(inputArguments args)
     // Step 3: Listen for incoming DNS packets
     while (1)
     {
-        char buffer[BUFFER_SIZE];
+        unsigned char buffer[BUFFER_SIZE];
         struct sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
         memset(buffer, 0, BUFFER_SIZE); // Clear the buffer
