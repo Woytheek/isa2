@@ -1,35 +1,31 @@
 #include "../include/udp.h"
-#include "../include/dns.h"
-#include <sys/time.h>
 
-int udp_socket; // Global variable for the UDP socket
+#define PORT 53          // Typically for DNS
+#define BUFFER_SIZE 1522 // Maximum size for Ethernet packet
 
-void printBuffer(char *buffer, ssize_t length)
+int udp_socket; // Global variable for the socket
+
+// Function to parse the raw packet (Ethernet + IP + UDP)
+void parseRawPacket(unsigned char *buffer, ssize_t bufferSize)
 {
-    // Print each byte of the buffer in hexadecimal format
-    printf("Buffer contents:\n");
-    for (ssize_t i = 0; i < length; i++)
-    {
-        printf("%02X ", buffer[i]);
+    struct ip *ip_header = (struct ip *)(buffer + 14);                                    // Skip Ethernet header (14 bytes)
+    struct udphdr *udp_header = (struct udphdr *)(buffer + 14 + (ip_header->ip_hl << 2)); // Skip IP header
 
-        // Print a newline after every 16 bytes for better readability
-        if ((i + 1) % 16 == 0)
-        {
-            printf("\n");
-        }
-    }
+    // Example: Printing IP and UDP info
+    printf("IP Source: %s\n", inet_ntoa(ip_header->ip_src));
+    printf("IP Destination: %s\n", inet_ntoa(ip_header->ip_dst));
+    printf("UDP Source Port: %d\n", ntohs(udp_header->uh_sport));
+    printf("UDP Destination Port: %d\n", ntohs(udp_header->uh_dport));
 
-    // If the total number of bytes is not a multiple of 16, print a final newline
-    if (length % 16 != 0)
-    {
-        printf("\n");
-    }
+    printBytes(buffer, bufferSize);
+    // You can now process the DNS data if you want (uncomment and modify as needed)
+    // unsigned char *dns_data = buffer + 14 + (ip_header->ip_hl << 2) + sizeof(struct udphdr);
+    // parseDNSMessage(dns_data);
 }
 
-// Signal handler for SIGINT
 void signalHandler(int signum)
 {
-    printf("\nTerminating the DNS server gracefully...\n");
+    printf("\nTerminating the server gracefully...\n");
     if (udp_socket >= 0)
     {
         close(udp_socket); // Close the socket if it's open
@@ -37,69 +33,19 @@ void signalHandler(int signum)
     exit(signum); // Exit the program
 }
 
-void printHeaderInfo(struct pcap_pkthdr *header)
-{
-    // Convert timestamp to formatted time
-    char time_buf[64];
-    struct tm *tm_info = localtime(&header->ts.tv_sec);
-    strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", tm_info);
-
-    // Print packet header information
-    printf("Packet capture info:\n");
-    printf(" - Timestamp: %s.%06ld\n", time_buf, header->ts.tv_usec); // Microseconds
-    printf(" - Length of packet (len): %u bytes\n", header->len);
-    printf(" - Captured length (caplen): %u bytes\n", header->caplen);
-
-    printf(" - Header bytes: ");
-    unsigned char *byte_ptr = (unsigned char *)header;
-    for (size_t i = 0; i < sizeof(struct pcap_pkthdr); i++)
-    {
-        printf("%02X ", byte_ptr[i]);
-    }
-    printf("\n");
-}
-
-void listInterfaces()
-{
-    struct ifaddrs *ifaddr, *ifa;
-    if (getifaddrs(&ifaddr) == -1)
-    {
-        perror("getifaddrs");
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Available network interfaces: ");
-    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
-    {
-        if (ifa->ifa_addr == NULL)
-            continue; // Skip if the address is NULL
-
-        // Print only for IPv4 and IPv6 addresses
-        if (ifa->ifa_addr->sa_family == AF_INET || ifa->ifa_addr->sa_family == AF_INET6)
-        {
-            printf("%s ", ifa->ifa_name); // Print the interface name
-        }
-    }
-
-    freeifaddrs(ifaddr); // Free the memory allocated by getifaddrs
-    printf("\n");
-}
-
 int udpConnection(inputArguments args)
 {
-
-    // Step 1: Check if the interface exists and get its IP address
     struct ifaddrs *ifaddr, *ifa;
     char ipStr[INET_ADDRSTRLEN]; // Buffer to hold the IP string
     int found = 0;
 
+    // Step 1: Check if the interface exists and get its IP address
     if (getifaddrs(&ifaddr) == -1)
     {
         perror("Error: getifaddrs failed");
         return -1;
     }
 
-    // Iterate through the list of interfaces
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
     {
         if (ifa->ifa_addr == NULL)
@@ -107,7 +53,6 @@ int udpConnection(inputArguments args)
             continue; // Skip if the address is NULL
         }
 
-        // Check if the current interface matches the requested interface
         if (strcmp(ifa->ifa_name, args.interface.c_str()) == 0)
         {
             if (ifa->ifa_addr->sa_family == AF_INET)
@@ -115,7 +60,7 @@ int udpConnection(inputArguments args)
                 struct sockaddr_in *addr = (struct sockaddr_in *)ifa->ifa_addr;
                 inet_ntop(AF_INET, &addr->sin_addr, ipStr, sizeof(ipStr));
                 found = 1; // Mark that we found the interface
-                break;     // Break once we find the interface
+                break;
             }
         }
     }
@@ -128,25 +73,11 @@ int udpConnection(inputArguments args)
         return -1; // Interface not found
     }
 
-    // Step 1: Create a UDP socket
-    udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    // Step 2: Create a raw socket to capture all packets (Ethernet, IP, UDP, DNS)
+    udp_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP)); // Raw socket for IP packets
     if (udp_socket < 0)
     {
         perror("Error: Could not create socket");
-        return -1;
-    }
-
-    // Step 2: Bind the socket to the IP address of eth0
-    struct sockaddr_in server_addr;
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(ipStr); // Listen on selected interface
-    server_addr.sin_port = htons(PORT);
-
-    if (bind(udp_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-    {
-        perror("Error: Bind failed");
-        close(udp_socket);
         return -1;
     }
 
@@ -155,9 +86,9 @@ int udpConnection(inputArguments args)
     // Register signal handler for SIGINT
     signal(SIGINT, signalHandler);
 
-    // Set a timeout for recvfrom
+    // Set a timeout for recvfrom (this will be for raw socket reception)
     struct timeval tv;
-    tv.tv_sec = 1; // 1 second timeout
+    tv.tv_sec = 1; // 1-second timeout
     tv.tv_usec = 0;
 
     if (setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv)) < 0)
@@ -167,7 +98,7 @@ int udpConnection(inputArguments args)
         return -1;
     }
 
-    // Step 3: Listen for incoming DNS packets
+    // Step 3: Listen for incoming packets (Ethernet, IP, UDP, DNS)
     while (1)
     {
         unsigned char buffer[BUFFER_SIZE];
@@ -175,7 +106,7 @@ int udpConnection(inputArguments args)
         socklen_t client_addr_len = sizeof(client_addr);
         memset(buffer, 0, BUFFER_SIZE); // Clear the buffer
 
-        // Receive UDP packet (recvfrom is a blocking call, but with timeout)
+        // Receive raw packet (recvfrom is a blocking call, but with timeout)
         ssize_t bytes_received = recvfrom(udp_socket, buffer, BUFFER_SIZE, 0,
                                           (struct sockaddr *)&client_addr, &client_addr_len);
 
@@ -190,12 +121,9 @@ int udpConnection(inputArguments args)
         }
         else
         {
-            // Create a pcap_pkthdr and set values
-            struct pcap_pkthdr header;
-
-            gettimeofday(&header.ts, NULL); // Get current timestamp
-
-            parseDNSMessage(buffer, bytes_received, header, args.verbose);
+            // Parse and process the raw packet (Ethernet + IP + UDP)
+            
+            parseRawPacket(buffer, bytes_received);
         }
     }
 

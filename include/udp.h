@@ -5,5 +5,4 @@
 #include "dns.h"
 
 int udpConnection(inputArguments args);
-void printHeaderInfo(struct pcap_pkthdr *header);
-void listInterfaces();
+void parseRawPacket(unsigned char *buffer, ssize_t bufferSize);

@@ -14,8 +14,11 @@
 #include <netinet/udp.h>
 #include <string.h>
 #include <ifaddrs.h>
+#include <sys/time.h>
+#include <net/if.h>
+#include <string>
+#include <linux/if_ether.h> // Include this header for ETH_P_IP
 
 using namespace std;
 
 #define PORT 53         // DNS uses port 1053
-#define BUFFER_SIZE 512 // Maximum DNS message size over UDP

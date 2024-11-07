@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    listInterfaces(); // TODO
+    //listInterfaces(); // TODO
 
     udpConnection(args);
     return 0;
