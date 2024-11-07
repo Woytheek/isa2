@@ -4,20 +4,24 @@
 
 int udp_socket; // Global variable for the UDP socket
 
-void printBuffer(char *buffer, ssize_t length) {
+void printBuffer(char *buffer, ssize_t length)
+{
     // Print each byte of the buffer in hexadecimal format
     printf("Buffer contents:\n");
-    for (ssize_t i = 0; i < length; i++) {
+    for (ssize_t i = 0; i < length; i++)
+    {
         printf("%02X ", buffer[i]);
 
         // Print a newline after every 16 bytes for better readability
-        if ((i + 1) % 16 == 0) {
+        if ((i + 1) % 16 == 0)
+        {
             printf("\n");
         }
     }
 
     // If the total number of bytes is not a multiple of 16, print a final newline
-    if (length % 16 != 0) {
+    if (length % 16 != 0)
+    {
         printf("\n");
     }
 }
@@ -190,8 +194,7 @@ int udpConnection(inputArguments args)
             struct pcap_pkthdr header;
 
             gettimeofday(&header.ts, NULL); // Get current timestamp
-            printBuffer(buffer, bytes_received);
-            //printBytes(buffer, bytes_received);
+
             parseDNSMessage(buffer, bytes_received, header, args.verbose);
         }
     }
