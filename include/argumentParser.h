@@ -7,9 +7,14 @@ struct inputArguments
 {
     string interface;        // Name of the interface to listen on
     string pcapFile;         // Name of the PCAP file to process
-    bool verbose;            // Flag for verbose mode
     string domainsFile;      // Name of the domains file
     string translationsFile; // Name of the translations file
+
+    bool i; // Flag for interface
+    bool p; // Flag for PCAP file
+    bool v; // Flag for verbose
+    bool d; // Flag for domains file
+    bool t; // Flag for translations file
 };
 
 class argumentParser

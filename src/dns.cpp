@@ -14,39 +14,51 @@ void printBytes(const unsigned char *data, int size)
     printf("\n"); // End with a newline
 }
 
-// Funkce pro zjednodušený výpis DNS zpráv
-void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, struct pcap_pkthdr *header)
+int isDNSPacket(const u_char *packet, int length)
 {
-    // Formátování časové značky z `pcap_pkthdr`
-    struct tm *timeinfo;
-    char dateTime[20];
-    timeinfo = localtime(&header->ts.tv_sec);                            // Převod sekund na lokální čas
-    strftime(dateTime, sizeof(dateTime), "%Y-%m-%d %H:%M:%S", timeinfo); // Formátování do řetězce
+    // Check if the packet length is sufficient for Ethernet and IP headers
+    if (length < 42)
+    {             // 14 (Ethernet) + 20 (IP) + 8 (UDP) = 42
+        return 0; // Not enough data for a DNS packet
+    }
 
-    // Výpis DNS informací
+    // Pointer to IP header
+    struct ip *ip = (struct ip *)(packet + 14); // Skip Ethernet header
+    // Pointer to UDP header
+    struct udphdr *udp = (struct udphdr *)(packet + 14 + (ip->ip_hl * 4)); // Skip Ethernet and IP headers
+
+    // Check if the protocol is UDP (17)
+    if (ip->ip_p != IPPROTO_UDP)
+    {
+        return 0; // Not a UDP packet
+    }
+
+    // Check if the source or destination port is 53 (DNS)
+    if (ntohs(udp->uh_sport) == 53 || ntohs(udp->uh_dport) == 53)
+    {
+        return 1; // It is a DNS packet
+    }
+
+    return 0; // Not a DNS packet
+}
+
+void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, char *dateTime)
+{
     char qr = (ntohs(dnsHeader->flags) & 0x8000) ? 'R' : 'Q';
     int qdCount = ntohs(dnsHeader->qdCount);
     int anCount = ntohs(dnsHeader->anCount);
     int nsCount = ntohs(dnsHeader->nsCount);
     int arCount = ntohs(dnsHeader->arCount);
 
-    printf("%s %s -> %s (%c %d/%d/%d/%d)\n",
-           dateTime, srcIP, dstIP, qr, qdCount, anCount, nsCount, arCount);
+    printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, srcIP, dstIP, qr, qdCount, anCount, nsCount, arCount);
 }
 
-// Funkce pro detailní výpis DNS zpráv
-void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, unsigned char *buffer, struct pcap_pkthdr *header)
+void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, unsigned char *buffer, char *dateTime)
 {
-    // Získání timestampu z pcap_pkthdr
-    struct tm *timeinfo;
-    char dateTime[20];
-    timeinfo = localtime(&header->ts.tv_sec); // Používá tv_sec z pcap_pkthdr
-    strftime(dateTime, sizeof(dateTime), "%Y-%m-%d %H:%M:%S", timeinfo);
-
-    printf("Timestamp: %s.%06ld\n", dateTime, header->ts.tv_usec); // Přidání mikrosekund
+    printf("Timestamp: %s\n", dateTime);
     printf("SrcIP: %s\n", srcIP);
     printf("DstIP: %s\n", dstIP);
-    printf("SrcPort: UDP/53\n");
+    printf("SrcPort: UDP/%d\n", PORT);
     printf("DstPort: UDP\n");
 
     printf("Identifier: 0x%X\n", ntohs(dnsHeader->id));
@@ -61,20 +73,64 @@ void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP,
            (ntohs(dnsHeader->flags) & 0x0010) >> 4,
            (ntohs(dnsHeader->flags) & 0x000F));
 
-    printf("\n[Question Section]\n");
     if (ntohs(dnsHeader->qdCount) > 0)
     {
+        printf("\n[Question Section]\n");
         for (int i = sizeof(DNSHeader); i < size; ++i)
         {
-            printf("%02X ", (unsigned char)buffer[i]);
+            printf("%c", (unsigned char)buffer[i]);
         }
+        printf("\n");
+    }
+
+    if (ntohs(dnsHeader->anCount) > 0)
+    {
+        printf("\n[Answer Section]\n");
+        
+        printf("\n");
+    }
+
+    if (ntohs(dnsHeader->nsCount) > 0)
+    {
+        printf("\n[Authority Section]\n");
+        
+        printf("\n");
+    }
+
+    if (ntohs(dnsHeader->arCount) > 0)
+    {
+        printf("\n[Additional Section]\n");
+        
         printf("\n");
     }
 
     printf("====================\n");
 }
 
-void parseDNSMessage(unsigned char *packet, ssize_t size, struct pcap_pkthdr header, bool verbose)
+void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthdr header, inputArguments args)
+{
+    char dateTime[20];
+    struct tm *timeinfo;
+
+    if (args.p)
+    {
+        // Catched packet from PCAP file
+        timeinfo = localtime(&header.ts.tv_sec);
+    }
+    else
+    {
+        // Catched live packet
+        time_t rawtime;
+        time(&rawtime);
+        timeinfo = localtime(&rawtime);
+    }
+
+    strftime(dateTime, sizeof(dateTime), "%Y-%m-%d %H:%M:%S", timeinfo);
+    parseDNSMessage(buffer, bufferSize, dateTime, args.v);
+    return;
+}
+
+void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v)
 {
     // Předpokládáme Ethernetový header (14 bajtů), extrahujeme IP header
     struct ip *ipHeader = (struct ip *)(packet + 14); // Skip Ethernet header
@@ -91,12 +147,6 @@ void parseDNSMessage(unsigned char *packet, ssize_t size, struct pcap_pkthdr hea
     // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
     ssize_t dnsSize = size - (14 + (ipHeader->ip_hl * 4) + 8);
 
-    printf("size: %ld\n", size);
-    printf("dnsSize: %ld\n", dnsSize);
-    printf("ipHeader->ip_hl: %d\n", ipHeader->ip_hl);
-    printf("(ssize_t)sizeof(DNSHeader): %ld\n", (ssize_t)sizeof(DNSHeader));
-
-
     // Zajištění, že velikost DNS paketu je validní
     if (dnsSize < (ssize_t)sizeof(DNSHeader))
     {
@@ -108,13 +158,13 @@ void parseDNSMessage(unsigned char *packet, ssize_t size, struct pcap_pkthdr hea
     DNSHeader *dnsHeader = (DNSHeader *)dnsPayload;
 
     // Zkontrolujeme, zda je zapnutý podrobný režim
-    if (verbose)
+    if (v)
     {
         // Předáme &header jako ukazatel na strukturu pcap_pkthdr
-        printVerboseDNS(dnsHeader, srcIP, dstIP, dnsSize, dnsPayload, &header);
+        printVerboseDNS(dnsHeader, srcIP, dstIP, dnsSize, dnsPayload, dateTime);
     }
     else
     {
-        printSimplifiedDNS(dnsHeader, srcIP, dstIP, &header);
+        printSimplifiedDNS(dnsHeader, srcIP, dstIP, dateTime);
     }
 }

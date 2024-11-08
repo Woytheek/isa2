@@ -5,4 +5,4 @@
 #include "dns.h"
 
 int udpConnection(inputArguments args);
-void parseRawPacket(unsigned char *buffer, ssize_t bufferSize);
+void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, inputArguments args);

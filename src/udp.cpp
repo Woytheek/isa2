@@ -5,24 +5,6 @@
 
 int udp_socket; // Global variable for the socket
 
-// Function to parse the raw packet (Ethernet + IP + UDP)
-void parseRawPacket(unsigned char *buffer, ssize_t bufferSize)
-{
-    struct ip *ip_header = (struct ip *)(buffer + 14);                                    // Skip Ethernet header (14 bytes)
-    struct udphdr *udp_header = (struct udphdr *)(buffer + 14 + (ip_header->ip_hl << 2)); // Skip IP header
-
-    // Example: Printing IP and UDP info
-    printf("IP Source: %s\n", inet_ntoa(ip_header->ip_src));
-    printf("IP Destination: %s\n", inet_ntoa(ip_header->ip_dst));
-    printf("UDP Source Port: %d\n", ntohs(udp_header->uh_sport));
-    printf("UDP Destination Port: %d\n", ntohs(udp_header->uh_dport));
-
-    printBytes(buffer, bufferSize);
-    // You can now process the DNS data if you want (uncomment and modify as needed)
-    // unsigned char *dns_data = buffer + 14 + (ip_header->ip_hl << 2) + sizeof(struct udphdr);
-    // parseDNSMessage(dns_data);
-}
-
 void signalHandler(int signum)
 {
     printf("\nTerminating the server gracefully...\n");
@@ -121,9 +103,11 @@ int udpConnection(inputArguments args)
         }
         else
         {
-            // Parse and process the raw packet (Ethernet + IP + UDP)
-            
-            parseRawPacket(buffer, bytes_received);
+            struct pcap_pkthdr header;
+            if (isDNSPacket(buffer, bytes_received))
+            {
+                parseRawPacket(buffer, bytes_received, header, args);
+            }
         }
     }
 

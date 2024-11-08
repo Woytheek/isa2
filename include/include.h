@@ -18,6 +18,8 @@
 #include <net/if.h>
 #include <string>
 #include <linux/if_ether.h> // Include this header for ETH_P_IP
+#include <cstdint>
+#include <vector>
 
 using namespace std;
 

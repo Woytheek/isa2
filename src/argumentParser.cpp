@@ -17,7 +17,7 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
     }
 
     // Initialize default values (if necessary)
-    out.verbose = false; // Assume there's a field for verbose mode
+    out.v = false; // Assume there's a field for verbose mode
 
     // Parse the command-line arguments.
     for (int i = 1; i < argc; ++i)
@@ -31,6 +31,7 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
                 err(1, "Incorrect usage of -i. An interface name is expected.");
             }
             out.interface = argv[i + 1]; // Interface
+            out.i = true;                // Set the flag
             ++i;
         }
         else if (argument == "-p")
@@ -40,11 +41,12 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
                 err(1, "Incorrect usage of -p. A PCAP file name is expected.");
             }
             out.pcapFile = argv[i + 1]; // PCAP file
+            out.p = true;               // Set the flag
             ++i;
         }
         else if (argument == "-v")
         {
-            out.verbose = true; // Set verbose flag to true
+            out.v = true; // Set verbose flag to true
         }
         else if (argument == "-d")
         {
@@ -53,6 +55,7 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
                 err(1, "Incorrect usage of -d. A domains file name is expected.");
             }
             out.domainsFile = argv[i + 1]; // Assuming out has a field for domains file
+            out.d = true;                  // Set the flag
             ++i;
         }
         else if (argument == "-t")
@@ -62,6 +65,7 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
                 err(1, "Incorrect usage of -t. A translations file name is expected.");
             }
             out.translationsFile = argv[i + 1]; // Assuming out has a field for translations file
+            out.t = true;                       // Set the flag
             ++i;
         }
         else
@@ -69,18 +73,4 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
             err(1, "Unknown argument: %s\n", argument.c_str());
         }
     }
-
-    /*// Print all the parsed parameters here
-    printf("\n");
-    printf("Parsed Arguments:\n");
-    if (!out.interface.empty())
-        printf("  Interface: %s\n", out.interface.c_str());
-    if (!out.pcapFile.empty())
-        printf("  PCAP File: %s\n", out.pcapFile.c_str());
-    if (!out.domainsFile.empty())
-        printf("  Domains File: %s\n", out.domainsFile.c_str());
-    if (!out.translationsFile.empty())
-        printf("  Translations File: %s\n", out.translationsFile.c_str());
-    printf("  Verbose mode: %s\n", out.verbose ? "Enabled" : "Disabled");
-    printf("\n");*/
 }

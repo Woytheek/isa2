@@ -1,6 +1,7 @@
 #pragma once
 
 #include "include.h"
+#include "argumentParser.h"
 
 // DNS header structure
 struct DNSHeader
@@ -14,6 +15,8 @@ struct DNSHeader
 };
 
 void printBytes(const unsigned char *data, int size);
-void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, struct pcap_pkthdr *header);
-void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, unsigned char *buffer, struct pcap_pkthdr *header);
-void parseDNSMessage(unsigned char *packet, ssize_t size, struct pcap_pkthdr header, bool verbose);
+void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthdr header, inputArguments args);
+void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v);
+void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, unsigned char *buffer, char *dateTime);
+void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, char *dateTime);
+int isDNSPacket(const u_char *packet, int length);
