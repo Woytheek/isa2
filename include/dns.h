@@ -14,6 +14,26 @@ struct DNSHeader
     uint16_t arCount; // Number of additional records
 };
 
+struct QuestionSection
+{
+    std::string qName;
+    uint16_t qType;
+    uint16_t qClass;
+};
+
+struct ResourceRecord
+{
+    std::string name;
+    uint16_t type;
+    uint16_t classCode;
+    uint32_t ttl;
+    uint16_t rdLength;
+    std::vector<uint8_t> rData;
+};
+
+std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset);
+void parseDNSPacket(const std::vector<uint8_t> &packet);
+
 void printBytes(const unsigned char *data, int size);
 void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthdr header, inputArguments args);
 void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v);

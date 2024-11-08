@@ -1,4 +1,6 @@
 #pragma once
+
+#include <set>
 #include <stdio.h>
 #include <pcap.h>
 #include <iostream>
@@ -23,4 +25,4 @@
 
 using namespace std;
 
-#define PORT 53         // DNS uses port 1053
+#define PORT 53 // DNS uses port 1053

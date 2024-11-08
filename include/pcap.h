@@ -1,6 +1,6 @@
 #pragma once
-#include "dns.h"
 #include "include.h"
+#include "dns.h"
 #include "argumentParser.h"
 
 
