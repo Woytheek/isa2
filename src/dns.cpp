@@ -44,11 +44,11 @@ int isDNSPacket(const u_char *packet, int length)
 
 void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, char *dateTime)
 {
-    char qr = (ntohs(dnsHeader->flags) & 0x8000) ? 'R' : 'Q';
-    int qdCount = ntohs(dnsHeader->qdCount);
-    int anCount = ntohs(dnsHeader->anCount);
-    int nsCount = ntohs(dnsHeader->nsCount);
-    int arCount = ntohs(dnsHeader->arCount);
+    char qr = (dnsHeader->flags & 0x8000) ? 'R' : 'Q';
+    int qdCount = dnsHeader->qdCount;
+    int anCount = dnsHeader->anCount;
+    int nsCount = dnsHeader->nsCount;
+    int arCount = dnsHeader->arCount;
 
     printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, srcIP, dstIP, qr, qdCount, anCount, nsCount, arCount);
 }
@@ -153,7 +153,7 @@ void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v
     }
     else
     {
-        // printSimplifiedDNS(dnsHeader, srcIP, dstIP, dateTime);
+        printSimplifiedDNS(header, srcIP, dstIP, dateTime);
     }
 }
 
