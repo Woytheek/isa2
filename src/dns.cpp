@@ -53,7 +53,7 @@ void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dst
     printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, srcIP, dstIP, qr, qdCount, anCount, nsCount, arCount);
 }
 
-void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, unsigned char *buffer, char *dateTime)
+void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, DNSSections *sections, char *dateTime)
 {
     printf("Timestamp: %s\n", dateTime);
     printf("SrcIP: %s\n", srcIP);
@@ -61,47 +61,38 @@ void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP,
     printf("SrcPort: UDP/%d\n", PORT);
     printf("DstPort: UDP\n");
 
-    printf("Identifier: 0x%X\n", ntohs(dnsHeader->id));
+    printf("Identifier: 0x%X\n", dnsHeader->id);
     printf("Flags: QR=%d, OPCODE=%d, AA=%d, TC=%d, RD=%d, RA=%d, AD=%d, CD=%d, RCODE=%d\n",
-           (ntohs(dnsHeader->flags) & 0x8000) >> 15,
-           (ntohs(dnsHeader->flags) & 0x7800) >> 11,
-           (ntohs(dnsHeader->flags) & 0x0400) >> 10,
-           (ntohs(dnsHeader->flags) & 0x0200) >> 9,
-           (ntohs(dnsHeader->flags) & 0x0100) >> 8,
-           (ntohs(dnsHeader->flags) & 0x0080) >> 7,
-           (ntohs(dnsHeader->flags) & 0x0020) >> 5,
-           (ntohs(dnsHeader->flags) & 0x0010) >> 4,
-           (ntohs(dnsHeader->flags) & 0x000F));
+           (dnsHeader->flags & 0x8000) >> 15,
+           (dnsHeader->flags & 0x7800) >> 11,
+           (dnsHeader->flags & 0x0400) >> 10,
+           (dnsHeader->flags & 0x0200) >> 9,
+           (dnsHeader->flags & 0x0100) >> 8,
+           (dnsHeader->flags & 0x0080) >> 7,
+           (dnsHeader->flags & 0x0020) >> 5,
+           (dnsHeader->flags & 0x0010) >> 4,
+           (dnsHeader->flags & 0x000F));
 
-    if (ntohs(dnsHeader->qdCount) > 0)
+    printf("Flags: 0x%04X\n", dnsHeader->flags); // TODO: DELETE DEBUG PRINT
+
+    if (dnsHeader->qdCount > 0)
     {
-        printf("\n[Question Section]\n");
-        for (int i = sizeof(DNSHeader); i < size; ++i)
-        {
-            printf("%c", (unsigned char)buffer[i]);
-        }
-        printf("\n");
+        printQuestionSection(sections->questions);
     }
 
-    if (ntohs(dnsHeader->anCount) > 0)
+    if (dnsHeader->anCount > 0)
     {
-        printf("\n[Answer Section]\n");
-
-        printf("\n");
+        printAnswerSection(sections->answers);
     }
 
-    if (ntohs(dnsHeader->nsCount) > 0)
+    if (dnsHeader->nsCount > 0)
     {
-        printf("\n[Authority Section]\n");
-
-        printf("\n");
+        printAuthoritySection(sections->authorities);
     }
 
-    if (ntohs(dnsHeader->arCount) > 0)
+    if (dnsHeader->arCount > 0)
     {
-        printf("\n[Additional Section]\n");
-
-        printf("\n");
+        printAdditionalSection(sections->additionals);
     }
 
     printf("====================\n");
@@ -150,73 +141,74 @@ void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v
     // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
     ssize_t dnsSize = size - (14 + (ipHeader->ip_hl * 4) + 8);
 
-    parseDNSPacket(std::vector<uint8_t>(dnsPayload, dnsPayload + dnsSize));
-    /*// Zajištění, že velikost DNS paketu je validní
-    if (dnsSize < (ssize_t)sizeof(DNSHeader))
-    {
-        printf("Invalid DNS packet after IP header\n");
-        return;
-    }
+    DNSHeader *header = new DNSHeader();
+    parseDNSHeader(std::vector<uint8_t>(dnsPayload, dnsPayload + dnsSize), header);
 
-    // Ukazatel na DNS header
-    DNSHeader *dnsHeader = (DNSHeader *)dnsPayload;
+    DNSSections *sections = new DNSSections();
+    parseDNSPacket(std::vector<uint8_t>(dnsPayload, dnsPayload + dnsSize), header, sections);
 
-    // Zkontrolujeme, zda je zapnutý podrobný režim
     if (v)
     {
-        // Předáme &header jako ukazatel na strukturu pcap_pkthdr
-        printVerboseDNS(dnsHeader, srcIP, dstIP, dnsSize, dnsPayload, dateTime);
+        printVerboseDNS(header, srcIP, dstIP, sections, dateTime);
     }
     else
     {
-        printSimplifiedDNS(dnsHeader, srcIP, dstIP, dateTime);
-    }*/
+        // printSimplifiedDNS(dnsHeader, srcIP, dstIP, dateTime);
+    }
 }
 
-////////////////////////////////////////////////////////////////////////////////////
+void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header)
+{
+    // Parse Header
+    int offset = 0;
+    header->id = (packet[offset] << 8) | packet[offset + 1];
+    header->flags = (packet[offset + 2] << 8) | packet[offset + 3];
+    header->qdCount = (packet[offset + 4] << 8) | packet[offset + 5];
+    header->anCount = (packet[offset + 6] << 8) | packet[offset + 7];
+    header->nsCount = (packet[offset + 8] << 8) | packet[offset + 9];
+    header->arCount = (packet[offset + 10] << 8) | packet[offset + 11];
+}
 
-// Function to print the Question Section
-
-
-void printQuestionSection(const std::vector<QuestionSection>& questions) {
+void printQuestionSection(const std::vector<QuestionSection> &questions)
+{
     printf("[Question Section]\n");
-    for (const auto& question : questions) {
+    for (const auto &question : questions)
+    {
         // Print the question details using printf
         printf("%s IN ", question.qName.c_str());
-        
+
         // Print the record type in human-readable format
-        switch (question.qType) {
-            case 1:
-                printf("A\n");      // IPv4 address
-                break;
-            case 28:
-                printf("AAAA\n");   // IPv6 address
-                break;
-            case 2:
-                printf("NS\n");     // Name Server
-                break;
-            case 15:
-                printf("MX\n");     // Mail Exchange
-                break;
-            case 6:
-                printf("SOA\n");    // Start of Authority
-                break;
-            case 5:
-                printf("CNAME\n");  // Canonical Name
-                break;
-            case 33:
-                printf("SRV\n");    // Service record
-                break;
-            default:
-                printf("%d\n", question.qType);  // For any other type, print the numeric value
-                break;
+        switch (question.qType)
+        {
+        case 1:
+            printf("A\n"); // IPv4 address
+            break;
+        case 28:
+            printf("AAAA\n"); // IPv6 address
+            break;
+        case 2:
+            printf("NS\n"); // Name Server
+            break;
+        case 15:
+            printf("MX\n"); // Mail Exchange
+            break;
+        case 6:
+            printf("SOA\n"); // Start of Authority
+            break;
+        case 5:
+            printf("CNAME\n"); // Canonical Name
+            break;
+        case 33:
+            printf("SRV\n"); // Service record
+            break;
+        default:
+            printf("%d\n", question.qType); // For any other type, print the numeric value
+            break;
         }
     }
     printf("\n");
 }
 
-
-// Function to print the Answer Section
 void printAnswerSection(const std::vector<ResourceRecord> &answers)
 {
     std::cout << "[Answer Section]" << std::endl;
@@ -248,7 +240,6 @@ void printAnswerSection(const std::vector<ResourceRecord> &answers)
     std::cout << std::endl;
 }
 
-// Function to print the Authority Section
 void printAuthoritySection(const std::vector<ResourceRecord> &authorities)
 {
     std::cout << "[Authority Section]" << std::endl;
@@ -261,7 +252,6 @@ void printAuthoritySection(const std::vector<ResourceRecord> &authorities)
     std::cout << std::endl;
 }
 
-// Function to print the Additional Section
 void printAdditionalSection(const std::vector<ResourceRecord> &additionals)
 {
     std::cout << "[Additional Section]" << std::endl;
@@ -302,23 +292,14 @@ std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset)
     return name;
 }
 
-void parseDNSPacket(const std::vector<uint8_t> &packet)
+void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSections *sections)
 {
     size_t offset = 0;
-
-    // Parse Header
-    DNSHeader header;
-    header.id = (packet[offset] << 8) | packet[offset + 1];
-    header.flags = (packet[offset + 2] << 8) | packet[offset + 3];
-    header.qdCount = (packet[offset + 4] << 8) | packet[offset + 5];
-    header.anCount = (packet[offset + 6] << 8) | packet[offset + 7];
-    header.nsCount = (packet[offset + 8] << 8) | packet[offset + 9];
-    header.arCount = (packet[offset + 10] << 8) | packet[offset + 11];
-    offset += 12;
+    offset += 12; // Skip header
 
     // Parse Question Section
     std::vector<QuestionSection> questions;
-    for (int i = 0; i < header.qdCount; i++)
+    for (int i = 0; i < header->qdCount; i++)
     {
         QuestionSection question;
         question.qName = readDomainName(packet, offset);
@@ -330,7 +311,7 @@ void parseDNSPacket(const std::vector<uint8_t> &packet)
 
     // Parse Answer Section
     std::vector<ResourceRecord> answers;
-    for (int i = 0; i < header.anCount; i++)
+    for (int i = 0; i < header->anCount; i++)
     {
         ResourceRecord answer;
         answer.name = readDomainName(packet, offset);
@@ -346,7 +327,7 @@ void parseDNSPacket(const std::vector<uint8_t> &packet)
 
     // Parse Authority Section
     std::vector<ResourceRecord> authorities;
-    for (int i = 0; i < header.nsCount; i++)
+    for (int i = 0; i < header->nsCount; i++)
     {
         ResourceRecord authority;
         authority.name = readDomainName(packet, offset);
@@ -362,7 +343,7 @@ void parseDNSPacket(const std::vector<uint8_t> &packet)
 
     // Parse Additional Section
     std::vector<ResourceRecord> additionals;
-    for (int i = 0; i < header.arCount; i++)
+    for (int i = 0; i < header->arCount; i++)
     {
         ResourceRecord additional;
         additional.name = readDomainName(packet, offset);
@@ -376,22 +357,20 @@ void parseDNSPacket(const std::vector<uint8_t> &packet)
         additionals.push_back(additional);
     }
 
-    // Call the print functions to display the sections
-    if (header.qdCount > 0)
+    if (questions.size() > 0)
     {
-        printQuestionSection(questions);
+        sections->questions = questions;
     }
-    if (header.anCount > 0)
+    if (answers.size() > 0)
     {
-        printAnswerSection(answers);
+        sections->answers = answers;
     }
-    if (header.nsCount > 0)
+    if (authorities.size() > 0)
     {
-        printAuthoritySection(authorities);
+        sections->authorities = authorities;
     }
-    if (header.arCount > 0)
+    if (additionals.size() > 0)
     {
-        printAdditionalSection(additionals);
+        sections->additionals = additionals;
     }
-
 }

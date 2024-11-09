@@ -31,12 +31,26 @@ struct ResourceRecord
     std::vector<uint8_t> rData;
 };
 
+struct DNSSections
+{
+    std::vector<QuestionSection> questions;
+    std::vector<ResourceRecord> answers;
+    std::vector<ResourceRecord> authorities;
+    std::vector<ResourceRecord> additionals;
+};
+
 std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset);
-void parseDNSPacket(const std::vector<uint8_t> &packet);
+void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header);
+void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSections *sections);
+
+void printQuestionSection(const std::vector<QuestionSection> &questions);
+void printAnswerSection(const std::vector<ResourceRecord> &answers);
+void printAuthoritySection(const std::vector<ResourceRecord> &authorities);
+void printAdditionalSection(const std::vector<ResourceRecord> &additionals);
 
 void printBytes(const unsigned char *data, int size);
 void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthdr header, inputArguments args);
 void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v);
-void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, ssize_t size, unsigned char *buffer, char *dateTime);
+void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, DNSSections *sections, char *dateTime);
 void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, char *dateTime);
 int isDNSPacket(const u_char *packet, int length);
