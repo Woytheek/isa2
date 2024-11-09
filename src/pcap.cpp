@@ -8,6 +8,7 @@ int parsePCAPFile(inputArguments args)
     if (handle == NULL)
     {
         fprintf(stderr, "Could not open file %s: %s\n", args.pcapFile.c_str(), errbuf);
+        printf("Error: %s\n", pcap_geterr(handle));
         return 1;
     }
 

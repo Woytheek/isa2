@@ -21,15 +21,15 @@ struct QuestionSection
     uint16_t qClass;
 };
 
-struct ResourceRecord
-{
-    std::string name;
-    uint16_t type;
-    uint16_t classCode;
-    uint32_t ttl;
-    uint16_t rdLength;
-    std::vector<uint8_t> rData;
-};
+    struct ResourceRecord
+    {
+        std::string name;
+        uint16_t type;
+        uint16_t classCode;
+        uint32_t ttl;
+        uint16_t rdLength;
+        std::vector<uint8_t> rData;
+    };
 
 struct DNSSections
 {
