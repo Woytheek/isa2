@@ -41,6 +41,7 @@ struct DNSSections
 
 std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset);
 void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header);
+
 void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSections *sections);
 
 void printQuestionSection(const std::vector<QuestionSection> &questions);
@@ -49,8 +50,8 @@ void printAuthoritySection(const std::vector<ResourceRecord> &authorities);
 void printAdditionalSection(const std::vector<ResourceRecord> &additionals);
 
 void printBytes(const unsigned char *data, int size);
-void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthdr header, inputArguments args);
-void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v);
+void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthdr header, inputArguments args, int offset);
+void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v, int offset);
 void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, DNSSections *sections, char *dateTime);
 void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, char *dateTime);
 int isDNSPacket(const u_char *packet, int length);

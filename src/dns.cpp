@@ -22,24 +22,59 @@ int isDNSPacket(const u_char *packet, int length)
         return 0; // Not enough data for a DNS packet
     }
 
-    // Pointer to IP header
-    struct ip *ip = (struct ip *)(packet + 14); // Skip Ethernet header
-    // Pointer to UDP header
-    struct udphdr *udp = (struct udphdr *)(packet + 14 + (ip->ip_hl * 4)); // Skip Ethernet and IP headers
-
-    // Check if the protocol is UDP (17)
-    if (ip->ip_p != IPPROTO_UDP)
+    for (int offset = 0; offset < length - 1; offset++)
     {
-        return 0; // Not a UDP packet
-    }
+        if (packet[offset] == 0x45 && packet[offset + 1] == 0x00 && packet[offset - 1] == 0x00 && packet[offset - 2] == 0x08)
+        {
+            struct ip *ip_header = NULL;
+            ip_header = (struct ip *)(packet + offset); // Nastavíme ukazatel na začátek IP hlavičky
 
-    // Check if the source or destination port is 53 (DNS)
-    if (ntohs(udp->uh_sport) == 53 || ntohs(udp->uh_dport) == 53)
-    {
-        return 1; // It is a DNS packet
-    }
+            // Kontrola, zda je protokol UDP
+            if (ip_header->ip_p != IPPROTO_UDP)
+            {
+                printf("NOT UDP %X\n", ip_header->ip_p);
+                return 0; // Nejde o UDP paket
+            }
+            printf("UDP\n");
 
-    return 0; // Not a DNS packet
+            // Posun na začátek UDP hlavičky
+            struct udphdr *udp = (struct udphdr *)(packet + offset + (ip_header->ip_hl * 4));
+
+            // Kontrola portů UDP (zdrojový nebo cílový port 53 pro DNS)
+            if (ntohs(udp->uh_sport) == 53 || ntohs(udp->uh_dport) == 53)
+            {
+                printf("DNS\n");
+                return offset; // TODO Jedná se o DNS paket
+            }
+            break;
+        }
+
+        // TODO TEST!!!!
+        //  Check for IPv6 (new code)
+        /*if (packet[offset] == 0x60 && packet[offset - 1] == 0xDD && packet[offset - 2] == 0x86)
+        {                                                                     // Check if the first byte indicates IPv6
+            struct ip6_hdr *ip6_header = (struct ip6_hdr *)(packet + offset); // Set pointer to IPv6 header
+
+            // Check if the Next Header is UDP (17 for UDP)
+            if (ip6_header->ip6_nxt != IPPROTO_UDP)
+            {
+                printf("NOT UDP (IPv6) %X\n", ip6_header->ip6_nxt);
+                return 0; // Not UDP
+            }
+            printf("IPv6 UDP\n");
+
+            // Move to the start of the UDP header
+            struct udphdr *udp = (struct udphdr *)(packet + offset + sizeof(struct ip6_hdr));
+
+            // Check for DNS (source or destination port 53)
+            if (ntohs(udp->uh_sport) == 53 || ntohs(udp->uh_dport) == 53)
+            {
+                printf("DNS (IPv6)\n");
+                return offset; // It's a DNS packet
+            }
+        }*/
+    }
+    return -1; // Nejde o DNS paket
 }
 
 void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, char *dateTime)
@@ -98,7 +133,7 @@ void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP,
     printf("====================\n");
 }
 
-void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthdr header, inputArguments args)
+void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthdr header, inputArguments args, int offset)
 {
     char dateTime[20];
     struct tm *timeinfo;
@@ -117,13 +152,13 @@ void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthd
     }
 
     strftime(dateTime, sizeof(dateTime), "%Y-%m-%d %H:%M:%S", timeinfo);
-    parseDNSMessage(buffer, bufferSize, dateTime, args.v);
+    parseDNSMessage(buffer, bufferSize, dateTime, args.v, offset);
     return;
 }
 
-void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v)
+void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v, int offset)
 {
-    struct ip *ipHeader = (struct ip *)(packet + 14); // Skip Ethernet header
+    struct ip *ipHeader = (struct ip *)(packet + offset); // Skip Ethernet header
 
     // Extrakce zdrojové a cílové IP adresy
     char srcIP[INET_ADDRSTRLEN];
@@ -132,10 +167,10 @@ void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v
     inet_ntop(AF_INET, &(ipHeader->ip_dst), dstIP, INET_ADDRSTRLEN);
 
     // Přeskočíme Ethernet, IP a UDP headery k dosažení DNS sekce
-    unsigned char *dnsPayload = packet + 14 + (ipHeader->ip_hl * 4) + 8; // 8 bajtů pro délku UDP headeru
+    unsigned char *dnsPayload = packet + offset + (ipHeader->ip_hl * 4) + 8; // 8 bajtů pro délku UDP headeru
 
     // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
-    ssize_t dnsSize = size - (14 + (ipHeader->ip_hl * 4) + 8);
+    ssize_t dnsSize = size - (offset + (ipHeader->ip_hl * 4) + 8);
 
     DNSHeader *header = new DNSHeader();
     parseDNSHeader(std::vector<uint8_t>(dnsPayload, dnsPayload + dnsSize), header);
@@ -170,8 +205,24 @@ void printQuestionSection(const std::vector<QuestionSection> &questions)
     printf("[Question Section]\n");
     for (const auto &question : questions)
     {
+        printf("%s ", question.qName.c_str());
         // Print the question details using printf
-        printf("%s IN ", question.qName.c_str());
+        switch (question.qClass)
+        {
+        default:
+        case 1:
+            printf("IN ");
+            break;
+        case 2:
+            printf("CS ");
+            break;
+        case 3:
+            printf("CH ");
+            break;
+        case 4:
+            printf("HS ");
+            break;
+        }
 
         // Print the record type in human-readable format
         switch (question.qType)
@@ -179,20 +230,20 @@ void printQuestionSection(const std::vector<QuestionSection> &questions)
         case 1:
             printf("A\n"); // IPv4 address
             break;
-        case 28:
-            printf("AAAA\n"); // IPv6 address
-            break;
         case 2:
             printf("NS\n"); // Name Server
             break;
-        case 15:
-            printf("MX\n"); // Mail Exchange
+        case 5:
+            printf("CNAME\n"); // Canonical Name
             break;
         case 6:
             printf("SOA\n"); // Start of Authority
             break;
-        case 5:
-            printf("CNAME\n"); // Canonical Name
+        case 15:
+            printf("MX\n"); // Mail Exchange
+            break;
+        case 28:
+            printf("AAAA\n"); // IPv6 address
             break;
         case 33:
             printf("SRV\n"); // Service record
@@ -211,7 +262,7 @@ void printAnswerSection(const std::vector<ResourceRecord> &answers)
     for (const auto &answer : answers)
     {
         // Print the name, TTL, IN, and record type
-        printf("%s. %u IN ", answer.name.c_str(), answer.ttl);
+        printf("%s %u IN ", answer.name.c_str(), answer.ttl);
 
         // Print the type of record (A, AAAA, or the type number)
         if (answer.type == 1)
@@ -257,12 +308,11 @@ void printAuthoritySection(const std::vector<ResourceRecord> &authorities)
         // print all the authority attributes
         printf("Name: %s\n", authority.name.c_str());
         printf("Type: %d\n", authority.type);
-        //print type in 0x format
+        // print type in 0x format
         printf("Class: %d\n", authority.classCode);
         printf("TTL: %d\n", authority.ttl);
         printf("TTL: 0x%X\n", authority.ttl);
         printf("RD Length: %d\n", authority.rdLength);
-        
     }
 }
 

@@ -9,14 +9,13 @@ int main(int argc, char *argv[])
     argumentParser parser;
     inputArguments args;
     parser.parseArguments(argc, argv, args);
-
     if (!args.pcapFile.empty())
     {
         parsePCAPFile(args);
         return 0;
     }
 
-    //listInterfaces(); // TODO
+    // listInterfaces(); // TODO
 
     udpConnection(args);
     return 0;

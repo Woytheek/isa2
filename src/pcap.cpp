@@ -11,7 +11,6 @@ int parsePCAPFile(inputArguments args)
         printf("Error: %s\n", pcap_geterr(handle));
         return 1;
     }
-
     struct pcap_pkthdr header;
     const unsigned char *packet;
 
@@ -19,9 +18,10 @@ int parsePCAPFile(inputArguments args)
     while ((packet = pcap_next(handle, &header)) != NULL)
     {
         // If this is a DNS packet, process it
-        if (isDNSPacket(packet, header.len))
+        int offset = isDNSPacket(packet, header.len);
+        if (offset != -1)
         {
-            parseRawPacket((unsigned char *)packet, header.len, header, args);
+            parseRawPacket((unsigned char *)packet, header.len, header, args, offset);
         }
     }
 

@@ -104,9 +104,10 @@ int udpConnection(inputArguments args)
         else
         {
             struct pcap_pkthdr header;
-            if (isDNSPacket(buffer, bytes_received))
+            int offset = isDNSPacket(buffer, bytes_received);
+            if (offset != -1)
             {
-                parseRawPacket(buffer, bytes_received, header, args);
+                parseRawPacket(buffer, bytes_received, header, args, offset);
             }
         }
     }
