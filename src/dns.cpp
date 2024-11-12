@@ -32,8 +32,8 @@ int isDNSPacket(const u_char *packet, int length)
             // Kontrola, zda je protokol UDP
             if (ip_header->ip_p != IPPROTO_UDP)
             {
-                printf("NOT UDP %X\n", ip_header->ip_p);
-                return 0; // Nejde o UDP paket
+                printf("NOT UDP\n"); // TODO DELETE DEBUG PRINT
+                return -1;           // Nejde o UDP paket
             }
 
             // Posun na začátek UDP hlavičky
@@ -109,7 +109,7 @@ void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, c
     printf("Flags: 0x%04X\n", dnsHeader->flags); // TODO: DELETE DEBUG PRINT
     printf("\n");
     (void)packet;
-    printSections(dnsHeader, sections);
+    printSections(dnsHeader, sections, packet);
 
     printf("====================\n");
 }
@@ -182,8 +182,9 @@ void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header)
     header->arCount = (packet[offset + 10] << 8) | packet[offset + 11];
 }
 
-void printSections(DNSHeader *header, DNSSections *sections)
+void printSections(DNSHeader *header, DNSSections *sections, const std::vector<uint8_t> &packet)
 {
+    (void)packet;
     if (header->qdCount > 0)
     {
         printQuestionSection(sections->questions);
@@ -194,7 +195,7 @@ void printSections(DNSHeader *header, DNSSections *sections)
         printf("[Answer Section]\n");
         for (const auto &answer : sections->answers)
         {
-            printResourceRecord(answer);
+            printResourceRecord(answer, packet);
         }
         printf("\n");
     }
@@ -204,7 +205,7 @@ void printSections(DNSHeader *header, DNSSections *sections)
         printf("[Authority Section]\n");
         for (const auto &authority : sections->authorities)
         {
-            printResourceRecord(authority);
+            printResourceRecord(authority, packet);
         }
         printf("\n");
     }
@@ -214,7 +215,7 @@ void printSections(DNSHeader *header, DNSSections *sections)
         printf("[Additional Section]\n");
         for (const auto &additional : sections->additionals)
         {
-            printResourceRecord(additional);
+            printResourceRecord(additional, packet);
         }
         printf("\n");
     }
@@ -276,7 +277,7 @@ void printQuestionSection(const std::vector<QuestionSection> &questions)
     printf("\n");
 }
 
-void printResourceRecord(const ResourceRecord &record /*, const std::vector<uint8_t> &data, size_t &offset*/)
+void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t> &packet)
 {
     std::string recordClass = "";
     switch (record.classCode)
@@ -296,6 +297,11 @@ void printResourceRecord(const ResourceRecord &record /*, const std::vector<uint
         break;
     }
 
+    size_t tempOffset = record.rDataOffset;
+    size_t MXtempOffset;
+    std::string dname;
+    std::string exchange;
+
     switch (record.type)
     {
     case 1:
@@ -303,7 +309,8 @@ void printResourceRecord(const ResourceRecord &record /*, const std::vector<uint
                (int)record.rData[0], (int)record.rData[1], (int)record.rData[2], (int)record.rData[3]);
         break;
     case 2:
-        printf("%s %d %s NS \n", record.name.c_str(), record.ttl, recordClass.c_str());
+        dname = readDomainName(packet, tempOffset);
+        printf("%s %d %s NS %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), dname.c_str());
         break;
     case 5:
         printf("temporary CNAME\n");
@@ -312,7 +319,10 @@ void printResourceRecord(const ResourceRecord &record /*, const std::vector<uint
         printf("temporary SOA\n");
         break;
     case 15:
-        printf("temporary MX\n");
+        MXtempOffset = tempOffset + 2;
+        exchange = readDomainName(packet, MXtempOffset);
+        printf("%s %d %s MX %d %s\n", record.name.c_str(), record.ttl, recordClass.c_str(),
+               (int)record.rData[0] << 8 | (int)record.rData[1], exchange.c_str());
         break;
     case 28:
         printf("%s %d %s AAAA ", record.name.c_str(), record.ttl, recordClass.c_str());
@@ -337,11 +347,19 @@ ResourceRecord parseResourceRecord(const std::vector<uint8_t> &data, size_t &off
     ResourceRecord record;
     record.name = readDomainName(data, offset);
     record.type = (data[offset] << 8) | data[offset + 1];
+
+    // Check if the record type is in [1,2,5,6,15,28,33] set
+    if (record.type != 1 && record.type != 2 && record.type != 5 && record.type != 6 && record.type != 15 && record.type != 28 && record.type != 33)
+    {
+        record.skip = true;
+    }
+
     record.classCode = (data[offset + 2] << 8) | data[offset + 3];
     record.ttl = (data[offset + 4] << 24) | (data[offset + 5] << 16) | (data[offset + 6] << 8) | data[offset + 7];
     record.rdLength = (data[offset + 8] << 8) | data[offset + 9];
     offset += 10;
     record.rData = std::vector<uint8_t>(data.begin() + offset, data.begin() + offset + record.rdLength);
+    record.rDataOffset = offset;
     offset += record.rdLength;
     return record;
 }
@@ -389,7 +407,10 @@ void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSe
     {
         ResourceRecord answer;
         answer = parseResourceRecord(packet, offset);
-        answers.push_back(answer);
+        if (!answer.skip)
+        {
+            answers.push_back(answer);
+        }
     }
 
     // Parse Authority Section
@@ -398,7 +419,10 @@ void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSe
     {
         ResourceRecord authority;
         authority = parseResourceRecord(packet, offset);
-        authorities.push_back(authority);
+        if (!authority.skip)
+        {
+            authorities.push_back(authority);
+        }
     }
 
     // Parse Additional Section
@@ -413,7 +437,10 @@ void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSe
         }
         ResourceRecord additional;
         additional = parseResourceRecord(packet, offset);
-        additionals.push_back(additional);
+        if (!additional.skip)
+        {
+            additionals.push_back(additional);
+        }
     }
 
     if (questions.size() > 0)

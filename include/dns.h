@@ -30,7 +30,8 @@ struct ResourceRecord
     uint16_t rdLength;
     std::vector<uint8_t> rData;
 
-    size_t offset;
+    size_t rDataOffset;
+    bool skip = false;
 };
 
 struct DNSSections
@@ -46,11 +47,11 @@ void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header);
 
 void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSections *sections);
 
-void printSections(DNSHeader *header, DNSSections *sections);
+void printSections(DNSHeader *header, DNSSections *sections, const std::vector<uint8_t> &packet);
 
 void printQuestionSection(const std::vector<QuestionSection> &questions);
 
-void printResourceRecord(const ResourceRecord &record);
+void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t> &packet);
 ResourceRecord parseResourceRecord(const std::vector<uint8_t> &data, size_t &offset);
 
 void printBytes(const unsigned char *data, int size);
