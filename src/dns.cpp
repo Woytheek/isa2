@@ -14,6 +14,59 @@ void printBytes(const unsigned char *data, int size)
     printf("\n"); // End with a newline
 }
 
+void printIPv6(const std::vector<uint8_t> &rData)
+{
+    // Ensure the rData size is correct for IPv6
+    if (rData.size() != 16)
+    {
+        printf("Invalid IPv6 address data size.\n");
+        return;
+    }
+
+    // Step 1: Convert 16 bytes to 8 16-bit blocks
+    uint16_t blocks[8];
+    for (size_t i = 0; i < 8; ++i)
+    {
+        blocks[i] = (rData[2 * i] << 8) | rData[2 * i + 1];
+    }
+
+    // Step 2: Find the longest run of zero blocks for "::" compression
+    int max_zeros = 0, best_zero_start = -1;
+    for (int i = 0; i < 8; ++i)
+    {
+        if (blocks[i] == 0)
+        {
+            int j = i;
+            while (j < 8 && blocks[j] == 0)
+                ++j;
+            int zero_count = j - i;
+            if (zero_count > max_zeros)
+            {
+                max_zeros = zero_count;
+                best_zero_start = i;
+            }
+            i = j;
+        }
+    }
+
+    // Step 3: Print the blocks with compression
+    for (int i = 0; i < 8; ++i)
+    {
+        if (i == best_zero_start)
+        { // Start of "::" compression
+            printf("::");
+            i += max_zeros - 1; // Skip over the zero sequence
+            continue;
+        }
+        if (i > 0 && i != best_zero_start + max_zeros)
+        {
+            printf(":");
+        }
+        printf("%x", blocks[i]);
+    }
+    printf("\n");
+}
+
 int isDNSPacket(const u_char *packet, int length)
 {
     // Check if the packet length is sufficient for Ethernet and IP headers
@@ -49,7 +102,7 @@ int isDNSPacket(const u_char *packet, int length)
 
         // TODO TEST!!!!
         //  Check for IPv6 (new code)
-        /*if (packet[offset] == 0x60 && packet[offset - 1] == 0xDD && packet[offset - 2] == 0x86)
+        if (packet[offset] == 0x60 && packet[offset + 1] == 0x00 && packet[offset - 1] == 0xDD && packet[offset - 2] == 0x86)
         {                                                                     // Check if the first byte indicates IPv6
             struct ip6_hdr *ip6_header = (struct ip6_hdr *)(packet + offset); // Set pointer to IPv6 header
 
@@ -70,7 +123,7 @@ int isDNSPacket(const u_char *packet, int length)
                 printf("DNS (IPv6)\n");
                 return offset; // It's a DNS packet
             }
-        }*/
+        }
     }
     return -1; // Nejde o DNS paket
 }
@@ -298,46 +351,75 @@ void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t
     }
 
     size_t tempOffset = record.rDataOffset;
-    size_t MXtempOffset;
+
+    // A
     std::string dname;
+
+    // MX
     std::string exchange;
+
+    // CNAME
+    std::string cname;
+
+    // SOA
+    std::string mname;
+    std::string rname;
+    uint32_t serial;
+    uint32_t refresh;
+    uint32_t retry;
+    uint32_t expire;
+    uint32_t minimum;
+
+    // SRV
+    std::string target;
+    uint16_t priority;
+    uint16_t weight;
+    uint16_t port;
 
     switch (record.type)
     {
     case 1:
-        printf("%s %d %s A %d.%d.%d.%d\n", record.name.c_str(), record.ttl, recordClass.c_str(),
-               (int)record.rData[0], (int)record.rData[1], (int)record.rData[2], (int)record.rData[3]);
+        printf("%s %d %s A %d.%d.%d.%d\n", record.name.c_str(), record.ttl, recordClass.c_str(), (int)record.rData[0], (int)record.rData[1], (int)record.rData[2], (int)record.rData[3]);
         break;
     case 2:
         dname = readDomainName(packet, tempOffset);
         printf("%s %d %s NS %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), dname.c_str());
         break;
     case 5:
-        printf("temporary CNAME\n");
+        cname = readDomainName(packet, tempOffset);
+        printf("%s %d %s CNAME %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), cname.c_str());
         break;
     case 6:
-        printf("temporary SOA\n");
+        mname = readDomainName(packet, tempOffset);
+        tempOffset = record.rDataOffset + mname.size() + 1;
+        rname = readDomainName(packet, tempOffset);
+        serial = (packet[tempOffset] << 24) | (packet[tempOffset + 1] << 16) | (packet[tempOffset + 2] << 8) | packet[tempOffset + 3];
+        refresh = (packet[tempOffset + 4] << 24) | (packet[tempOffset + 5] << 16) | (packet[tempOffset + 6] << 8) | packet[tempOffset + 7];
+        retry = (packet[tempOffset + 8] << 24) | (packet[tempOffset + 9] << 16) | (packet[tempOffset + 10] << 8) | packet[tempOffset + 11];
+        expire = (packet[tempOffset + 12] << 24) | (packet[tempOffset + 13] << 16) | (packet[tempOffset + 14] << 8) | packet[tempOffset + 15];
+        minimum = (packet[tempOffset + 16] << 24) | (packet[tempOffset + 17] << 16) | (packet[tempOffset + 18] << 8) | packet[tempOffset + 19];
+        printf("%s %d %s SOA %s %s %d %d %d %d %d\n", record.name.c_str(), record.ttl, recordClass.c_str(), mname.c_str(), rname.c_str(), serial, refresh, retry, expire, minimum);
         break;
     case 15:
+        size_t MXtempOffset;
         MXtempOffset = tempOffset + 2;
         exchange = readDomainName(packet, MXtempOffset);
-        printf("%s %d %s MX %d %s\n", record.name.c_str(), record.ttl, recordClass.c_str(),
-               (int)record.rData[0] << 8 | (int)record.rData[1], exchange.c_str());
+        printf("%s %d %s MX %d %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), (int)record.rData[0] << 8 | (int)record.rData[1], exchange.c_str());
         break;
     case 28:
         printf("%s %d %s AAAA ", record.name.c_str(), record.ttl, recordClass.c_str());
-        for (size_t i = 0; i < record.rData.size(); i += 2)
-        {
-            printf("%x", (int)record.rData[i] << 8 | (int)record.rData[i + 1]);
-            if (i + 2 < record.rData.size())
-                printf(":");
-        }
-        printf("\n");
+        printIPv6(record.rData);
         break;
     case 33:
-        printf("temporary SRV\n");
+        priority = (record.rData[0] << 8) | record.rData[1];
+        weight = (record.rData[2] << 8) | record.rData[3];
+        port = (record.rData[4] << 8) | record.rData[5];
+        tempOffset = record.rDataOffset + 6;
+        target = readDomainName(packet, tempOffset);
+        printf("%s %d %s SRV %d %d %d %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), priority, weight, port, target.c_str());
         break;
     default:
+        // Should not happen
         break;
     }
 }

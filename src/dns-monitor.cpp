@@ -15,8 +15,11 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    // listInterfaces(); // TODO
+    if (!udpConnection(args))
+    {
+        std::cerr << "Failed to establish UDP connection!" << std::endl;
+        return 1; // return if UDP connection fails
+    }
 
-    udpConnection(args);
     return 0;
 }

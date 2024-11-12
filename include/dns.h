@@ -54,6 +54,8 @@ void printQuestionSection(const std::vector<QuestionSection> &questions);
 void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t> &packet);
 ResourceRecord parseResourceRecord(const std::vector<uint8_t> &data, size_t &offset);
 
+void printIPv6(const std::vector<uint8_t> &rData);
+
 void printBytes(const unsigned char *data, int size);
 void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthdr header, inputArguments args, int offset);
 void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v, int offset);

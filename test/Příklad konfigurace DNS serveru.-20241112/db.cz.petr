@@ -1,0 +1,16 @@
+$TTL	3600
+@		IN	SOA	ns1.petr.cz. admin.petr.cz.  (
+					201403130	; Serial
+					3600		; Refresh
+					900		; Retry
+					3600000		; Expire
+					3600 )		; Minimum
+		IN	NS	ns1.petr.cz.
+
+ns1		IN	A	10.10.10.112
+PCUC		IN	A	10.10.10.1
+PC01		IN	A	10.10.10.101
+PC02		IN	A	10.10.10.102
+PC03		IN	A	10.10.10.103
+
+server		IN	CNAME	ns1.petr.cz.
