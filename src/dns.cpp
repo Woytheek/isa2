@@ -35,7 +35,6 @@ int isDNSPacket(const u_char *packet, int length)
                 printf("NOT UDP %X\n", ip_header->ip_p);
                 return 0; // Nejde o UDP paket
             }
-            printf("UDP\n");
 
             // Posun na začátek UDP hlavičky
             struct udphdr *udp = (struct udphdr *)(packet + offset + (ip_header->ip_hl * 4));
@@ -43,7 +42,6 @@ int isDNSPacket(const u_char *packet, int length)
             // Kontrola portů UDP (zdrojový nebo cílový port 53 pro DNS)
             if (ntohs(udp->uh_sport) == 53 || ntohs(udp->uh_dport) == 53)
             {
-                printf("DNS\n");
                 return offset; // TODO Jedná se o DNS paket
             }
             break;
@@ -88,7 +86,7 @@ void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dst
     printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, srcIP, dstIP, qr, qdCount, anCount, nsCount, arCount);
 }
 
-void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, DNSSections *sections, char *dateTime)
+void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, DNSSections *sections, char *dateTime)
 {
     printf("Timestamp: %s\n", dateTime);
     printf("SrcIP: %s\n", srcIP);
@@ -109,26 +107,9 @@ void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP,
            (dnsHeader->flags & 0x000F));
 
     printf("Flags: 0x%04X\n", dnsHeader->flags); // TODO: DELETE DEBUG PRINT
-
-    if (dnsHeader->qdCount > 0)
-    {
-        printQuestionSection(sections->questions);
-    }
-
-    if (dnsHeader->anCount > 0)
-    {
-        printAnswerSection(sections->answers);
-    }
-
-    if (dnsHeader->nsCount > 0)
-    {
-        printAuthoritySection(sections->authorities);
-    }
-
-    if (dnsHeader->arCount > 0)
-    {
-        printAdditionalSection(sections->additionals);
-    }
+    printf("\n");
+    (void)packet;
+    printSections(dnsHeader, sections);
 
     printf("====================\n");
 }
@@ -173,14 +154,15 @@ void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v
     ssize_t dnsSize = size - (offset + (ipHeader->ip_hl * 4) + 8);
 
     DNSHeader *header = new DNSHeader();
-    parseDNSHeader(std::vector<uint8_t>(dnsPayload, dnsPayload + dnsSize), header);
+    std::vector<uint8_t> dnsBody(dnsPayload, dnsPayload + dnsSize);
+    parseDNSHeader(dnsBody, header);
 
     DNSSections *sections = new DNSSections();
-    parseDNSPacket(std::vector<uint8_t>(dnsPayload, dnsPayload + dnsSize), header, sections);
+    parseDNSPacket(dnsBody, header, sections);
 
     if (v)
     {
-        printVerboseDNS(header, srcIP, dstIP, sections, dateTime);
+        printVerboseDNS(dnsBody, header, srcIP, dstIP, sections, dateTime);
     }
     else
     {
@@ -198,6 +180,44 @@ void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header)
     header->anCount = (packet[offset + 6] << 8) | packet[offset + 7];
     header->nsCount = (packet[offset + 8] << 8) | packet[offset + 9];
     header->arCount = (packet[offset + 10] << 8) | packet[offset + 11];
+}
+
+void printSections(DNSHeader *header, DNSSections *sections)
+{
+    if (header->qdCount > 0)
+    {
+        printQuestionSection(sections->questions);
+    }
+
+    if (header->anCount > 0)
+    {
+        printf("[Answer Section]\n");
+        for (const auto &answer : sections->answers)
+        {
+            printResourceRecord(answer);
+        }
+        printf("\n");
+    }
+
+    if (header->nsCount > 0)
+    {
+        printf("[Authority Section]\n");
+        for (const auto &authority : sections->authorities)
+        {
+            printResourceRecord(authority);
+        }
+        printf("\n");
+    }
+
+    if (header->arCount > 0)
+    {
+        printf("[Additional Section]\n");
+        for (const auto &additional : sections->additionals)
+        {
+            printResourceRecord(additional);
+        }
+        printf("\n");
+    }
 }
 
 void printQuestionSection(const std::vector<QuestionSection> &questions)
@@ -256,99 +276,74 @@ void printQuestionSection(const std::vector<QuestionSection> &questions)
     printf("\n");
 }
 
-void printAnswerSection(const std::vector<ResourceRecord> &answers)
+void printResourceRecord(const ResourceRecord &record /*, const std::vector<uint8_t> &data, size_t &offset*/)
 {
-    printf("[Answer Section]\n");
-    for (const auto &answer : answers)
+    std::string recordClass = "";
+    switch (record.classCode)
     {
-        // Print the name, TTL, IN, and record type
-        printf("%s %u IN ", answer.name.c_str(), answer.ttl);
+    case 1:
+    default:
+        recordClass = "IN";
+        break;
+    case 2:
+        recordClass = "CS";
+        break;
+    case 3:
+        recordClass = "CH";
+        break;
+    case 4:
+        recordClass = "HS";
+        break;
+    }
 
-        // Print the type of record (A, AAAA, or the type number)
-        if (answer.type == 1)
+    switch (record.type)
+    {
+    case 1:
+        printf("%s %d %s A %d.%d.%d.%d\n", record.name.c_str(), record.ttl, recordClass.c_str(),
+               (int)record.rData[0], (int)record.rData[1], (int)record.rData[2], (int)record.rData[3]);
+        break;
+    case 2:
+        printf("%s %d %s NS \n", record.name.c_str(), record.ttl, recordClass.c_str());
+        break;
+    case 5:
+        printf("temporary CNAME\n");
+        break;
+    case 6:
+        printf("temporary SOA\n");
+        break;
+    case 15:
+        printf("temporary MX\n");
+        break;
+    case 28:
+        printf("%s %d %s AAAA ", record.name.c_str(), record.ttl, recordClass.c_str());
+        for (size_t i = 0; i < record.rData.size(); i += 2)
         {
-            printf("A ");
-        }
-        else if (answer.type == 28)
-        {
-            printf("AAAA ");
-        }
-        else
-        {
-            printf("%u ", answer.type);
-        }
-
-        // Print IP address or other data depending on record type
-        if (answer.type == 1)
-        { // A record (IPv4)
-            printf("%d.%d.%d.%d", (int)answer.rData[0], (int)answer.rData[1],
-                   (int)answer.rData[2], (int)answer.rData[3]);
-        }
-        else if (answer.type == 28)
-        { // AAAA record (IPv6)
-            for (size_t i = 0; i < answer.rData.size(); i += 2)
-            {
-                // Print each pair of bytes as a 16-bit hexadecimal number
-                printf("%x", (int)answer.rData[i] << 8 | (int)answer.rData[i + 1]);
-                if (i + 2 < answer.rData.size())
-                    printf(":");
-            }
+            printf("%x", (int)record.rData[i] << 8 | (int)record.rData[i + 1]);
+            if (i + 2 < record.rData.size())
+                printf(":");
         }
         printf("\n");
-    }
-    printf("\n");
-}
-
-void printAuthoritySection(const std::vector<ResourceRecord> &authorities)
-{
-    printf("[Authority Section]\n");
-    for (const auto &authority : authorities)
-    {
-        printf("%s %d IN NS %s\n", authority.name.c_str(), authority.ttl, authority.rData.data());
-        // print all the authority attributes
-        printf("Name: %s\n", authority.name.c_str());
-        printf("Type: %d\n", authority.type);
-        // print type in 0x format
-        printf("Class: %d\n", authority.classCode);
-        printf("TTL: %d\n", authority.ttl);
-        printf("TTL: 0x%X\n", authority.ttl);
-        printf("RD Length: %d\n", authority.rdLength);
+        break;
+    case 33:
+        printf("temporary SRV\n");
+        break;
+    default:
+        break;
     }
 }
 
-void printAdditionalSection(const std::vector<ResourceRecord> &additionals)
+ResourceRecord parseResourceRecord(const std::vector<uint8_t> &data, size_t &offset)
 {
-    // Print the "[Additional Section]" label
-    printf("[Additional Section]\n");
-
-    for (const auto &additional : additionals)
-    {
-        // Print the name, TTL, IN, and record type
-        printf("%s %u IN ", additional.name.c_str(), additional.ttl);
-
-        // Print the type of record (A or the type number)
-        if (additional.type == 1)
-        {
-            printf("A ");
-        }
-        else
-        {
-            printf("%u ", additional.type);
-        }
-
-        // Print IP address (IPv4) if it's an A record
-        if (additional.type == 1)
-        { // A record (IPv4)
-            printf("%d.%d.%d.%d", (int)additional.rData[0], (int)additional.rData[1],
-                   (int)additional.rData[2], (int)additional.rData[3]);
-        }
-
-        // Newline after each additional record
-        printf("\n");
-    }
-
-    // Newline at the end of the entire section
-    printf("\n");
+    ResourceRecord record;
+    record.name = readDomainName(data, offset);
+    record.type = (data[offset] << 8) | data[offset + 1];
+    record.classCode = (data[offset + 2] << 8) | data[offset + 3];
+    record.ttl = (data[offset + 4] << 24) | (data[offset + 5] << 16) | (data[offset + 6] << 8) | data[offset + 7];
+    record.rdLength = (data[offset + 8] << 8) | data[offset + 9];
+    offset += 10;
+    record.rData = std::vector<uint8_t>(data.begin() + offset, data.begin() + offset + record.rdLength);
+    offset += record.rdLength;
+    return record;
 }
 
 std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset)
@@ -367,7 +362,6 @@ std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset)
         name += std::string(data.begin() + offset, data.begin() + offset + len) + ".";
         offset += len;
     }
-    offset++; // Skip the null byte
     return name;
 }
 
@@ -382,6 +376,7 @@ void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSe
     {
         QuestionSection question;
         question.qName = readDomainName(packet, offset);
+        offset += 1;
         question.qType = (packet[offset] << 8) | packet[offset + 1];
         question.qClass = (packet[offset + 2] << 8) | packet[offset + 3];
         offset += 4;
@@ -393,14 +388,7 @@ void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSe
     for (int i = 0; i < header->anCount; i++)
     {
         ResourceRecord answer;
-        answer.name = readDomainName(packet, offset);
-        answer.type = ntohs((packet[offset] << 8) | packet[offset + 1]);
-        answer.classCode = ntohs((packet[offset + 2] << 8) | packet[offset + 3]);
-        answer.ttl = (packet[offset + 4] << 24) | (packet[offset + 5] << 16) | (packet[offset + 6] << 8) | packet[offset + 7];
-        answer.rdLength = (packet[offset + 8] << 8) | packet[offset + 9];
-        offset += 10;
-        answer.rData = std::vector<uint8_t>(packet.begin() + offset, packet.begin() + offset + answer.rdLength);
-        offset += answer.rdLength;
+        answer = parseResourceRecord(packet, offset);
         answers.push_back(answer);
     }
 
@@ -409,14 +397,7 @@ void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSe
     for (int i = 0; i < header->nsCount; i++)
     {
         ResourceRecord authority;
-        authority.name = readDomainName(packet, offset);
-        authority.type = ntohs((packet[offset] << 8) | packet[offset + 1]);
-        authority.classCode = ntohs((packet[offset + 2] << 8) | packet[offset + 3]);
-        authority.ttl = ntohs((packet[offset + 4] << 24) | (packet[offset + 5] << 16) | (packet[offset + 6] << 8) | packet[offset + 7]);
-        authority.rdLength = (packet[offset + 8] << 8) | packet[offset + 9];
-        offset += 10;
-        authority.rData = std::vector<uint8_t>(packet.begin() + offset, packet.begin() + offset + authority.rdLength);
-        offset += authority.rdLength;
+        authority = parseResourceRecord(packet, offset);
         authorities.push_back(authority);
     }
 
@@ -424,15 +405,14 @@ void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSe
     std::vector<ResourceRecord> additionals;
     for (int i = 0; i < header->arCount; i++)
     {
+        // Root domain indicates the end of the additional section
+        if (packet[offset] == 0)
+        {
+            header->arCount = i;
+            break;
+        }
         ResourceRecord additional;
-        additional.name = readDomainName(packet, offset);
-        additional.type = (packet[offset] << 8) | packet[offset + 1];
-        additional.classCode = (packet[offset + 2] << 8) | packet[offset + 3];
-        additional.ttl = (packet[offset + 4] << 24) | (packet[offset + 5] << 16) | (packet[offset + 6] << 8) | packet[offset + 7];
-        additional.rdLength = (packet[offset + 8] << 8) | packet[offset + 9];
-        offset += 10;
-        additional.rData = std::vector<uint8_t>(packet.begin() + offset, packet.begin() + offset + additional.rdLength);
-        offset += additional.rdLength;
+        additional = parseResourceRecord(packet, offset);
         additionals.push_back(additional);
     }
 

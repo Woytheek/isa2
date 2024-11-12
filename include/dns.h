@@ -21,15 +21,17 @@ struct QuestionSection
     uint16_t qClass;
 };
 
-    struct ResourceRecord
-    {
-        std::string name;
-        uint16_t type;
-        uint16_t classCode;
-        uint32_t ttl;
-        uint16_t rdLength;
-        std::vector<uint8_t> rData;
-    };
+struct ResourceRecord
+{
+    std::string name;
+    uint16_t type;
+    uint16_t classCode;
+    uint32_t ttl;
+    uint16_t rdLength;
+    std::vector<uint8_t> rData;
+
+    size_t offset;
+};
 
 struct DNSSections
 {
@@ -44,14 +46,16 @@ void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header);
 
 void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSections *sections);
 
+void printSections(DNSHeader *header, DNSSections *sections);
+
 void printQuestionSection(const std::vector<QuestionSection> &questions);
-void printAnswerSection(const std::vector<ResourceRecord> &answers);
-void printAuthoritySection(const std::vector<ResourceRecord> &authorities);
-void printAdditionalSection(const std::vector<ResourceRecord> &additionals);
+
+void printResourceRecord(const ResourceRecord &record);
+ResourceRecord parseResourceRecord(const std::vector<uint8_t> &data, size_t &offset);
 
 void printBytes(const unsigned char *data, int size);
 void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthdr header, inputArguments args, int offset);
 void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v, int offset);
-void printVerboseDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, DNSSections *sections, char *dateTime);
+void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, DNSSections *sections, char *dateTime);
 void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, char *dateTime);
 int isDNSPacket(const u_char *packet, int length);
