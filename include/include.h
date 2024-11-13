@@ -25,6 +25,7 @@
 #include <vector>
 #include <cstdint>
 #include <sstream>
+#include <memory>
 
 using namespace std;
 

@@ -206,20 +206,20 @@ void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v
     // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
     ssize_t dnsSize = size - (offset + (ipHeader->ip_hl * 4) + 8);
 
-    DNSHeader *header = new DNSHeader();
+    auto header = std::make_unique<DNSHeader>(); // Using unique_ptr for automatic memory management
     std::vector<uint8_t> dnsBody(dnsPayload, dnsPayload + dnsSize);
-    parseDNSHeader(dnsBody, header);
+    parseDNSHeader(dnsBody, header.get());
 
-    DNSSections *sections = new DNSSections();
-    parseDNSPacket(dnsBody, header, sections);
+    auto sections = std::make_unique<DNSSections>(); // Using unique_ptr
+    parseDNSPacket(dnsBody, header.get(), sections.get());
 
     if (v)
     {
-        printVerboseDNS(dnsBody, header, srcIP, dstIP, sections, dateTime);
+        printVerboseDNS(dnsBody, header.get(), srcIP, dstIP, sections.get(), dateTime);
     }
     else
     {
-        printSimplifiedDNS(header, srcIP, dstIP, dateTime);
+        printSimplifiedDNS(header.get(), srcIP, dstIP, dateTime);
     }
 }
 
@@ -541,7 +541,4 @@ void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSe
     {
         sections->additionals = additionals;
     }
-
-
-    
 }
