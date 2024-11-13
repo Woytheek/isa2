@@ -3,116 +3,105 @@
 #define PORT 53          // Typically for DNS
 #define BUFFER_SIZE 1522 // Maximum size for Ethernet packet
 
-int udp_socket; // Global variable for the socket
+// Declare the global pointer to store the UDPConnection instance
+UDPConnection* g_udpConnectionInstance = nullptr;
 
-void signalHandler(int signum)
-{
-    printf("\nTerminating the server gracefully...\n");
-    if (udp_socket >= 0)
-    {
-        close(udp_socket); // Close the socket if it's open
-    }
-    exit(signum); // Exit the program
+#define PORT 53          // Typically for DNS
+#define BUFFER_SIZE 1522 // Maximum size for Ethernet packet
+
+// Constructor for UDPConnection class
+UDPConnection::UDPConnection(const inputArguments &args) : args(args), udp_socket(-1) {
+    // Set the global instance pointer to 'this'
+    g_udpConnectionInstance = this;
 }
 
-int udpConnection(inputArguments args)
-{
-    struct ifaddrs *ifaddr, *ifa;
-    char ipStr[INET_ADDRSTRLEN]; // Buffer to hold the IP string
-    int found = 0;
+// Destructor for UDPConnection class
+UDPConnection::~UDPConnection() {
+    if (udp_socket >= 0) {
+        close(udp_socket); // Clean up and close the socket
+    }
+    // Set the global instance pointer to nullptr on destruction
+    g_udpConnectionInstance = nullptr;
+}
 
-    // Step 1: Check if the interface exists and get its IP address
-    if (getifaddrs(&ifaddr) == -1)
-    {
-        perror("Error: getifaddrs failed");
-        return -1;
+// Public method to start the UDP connection
+int UDPConnection::start() {
+    // Step 1: Configure network interface
+    if (!configureInterface()) {
+        return -1; // Return if interface configuration fails
     }
 
-    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
-    {
-        if (ifa->ifa_addr == NULL)
-        {
-            continue; // Skip if the address is NULL
-        }
-
-        if (strcmp(ifa->ifa_name, args.interface.c_str()) == 0)
-        {
-            if (ifa->ifa_addr->sa_family == AF_INET)
-            { // Check for IPv4
-                struct sockaddr_in *addr = (struct sockaddr_in *)ifa->ifa_addr;
-                inet_ntop(AF_INET, &addr->sin_addr, ipStr, sizeof(ipStr));
-                found = 1; // Mark that we found the interface
-                break;
-            }
-        }
+    // Step 2: Create the socket
+    if (!createSocket()) {
+        return -1; // Return if socket creation fails
     }
 
-    freeifaddrs(ifaddr); // Free the allocated memory
+    // Register signal handler for graceful termination
+    setupSignalHandler();
 
-    if (!found)
-    {
-        fprintf(stderr, "Error: Interface %s not found\n", args.interface.c_str());
-        return -1; // Interface not found
-    }
-
-    // Step 2: Create a raw socket to capture all packets (Ethernet, IP, UDP, DNS)
-    udp_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP)); // Raw socket for IP packets
-    if (udp_socket < 0)
-    {
-        perror("Error: Could not create socket");
-        return -1;
-    }
-
-    printf("Listening for DNS messages on %s (%s)...\n", ipStr, args.interface.c_str());
-
-    // Register signal handler for SIGINT
-    signal(SIGINT, signalHandler);
-
-    // Set a timeout for recvfrom (this will be for raw socket reception)
-    struct timeval tv;
-    tv.tv_sec = 1; // 1-second timeout
-    tv.tv_usec = 0;
-
-    if (setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv)) < 0)
-    {
-        perror("Error: Setting socket options failed");
-        close(udp_socket);
-        return -1;
-    }
-
-    // Step 3: Listen for incoming packets (Ethernet, IP, UDP, DNS)
-    while (1)
-    {
+    // Step 3: Process incoming packets in a loop
+    while (true) {
         unsigned char buffer[BUFFER_SIZE];
         struct sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
         memset(buffer, 0, BUFFER_SIZE); // Clear the buffer
 
-        // Receive raw packet (recvfrom is a blocking call, but with timeout)
+        // Receive raw packet (blocking call)
         ssize_t bytes_received = recvfrom(udp_socket, buffer, BUFFER_SIZE, 0,
                                           (struct sockaddr *)&client_addr, &client_addr_len);
 
-        if (bytes_received < 0)
-        {
-            if (errno == EWOULDBLOCK)
-            {
-                // Timeout occurred, continue to loop
-                continue;
-            }
+        if (bytes_received < 0) {
             perror("Error: Failed to receive packet");
-        }
-        else
-        {
+        } else {
             struct pcap_pkthdr header;
             int offset = isDNSPacket(buffer, bytes_received);
-            if (offset != -1)
-            {
+            if (offset != -1) {
                 parseRawPacket(buffer, bytes_received, header, args, offset);
             }
         }
     }
 
-    // Close the socket (never reached in this infinite loop)
-    close(udp_socket);
-    return 0;
+    return 0; // This is never reached due to the infinite loop
+}
+
+// Private method to handle signal for graceful shutdown
+void UDPConnection::handleSignal(int signum) {
+    printf("\nTerminating the server gracefully...\n");
+    if (udp_socket >= 0) {
+        close(udp_socket); // Close the socket if it's open
+    }
+    exit(signum); // Exit the program
+}
+
+// Static method to handle signals from outside the class context
+void UDPConnection::signalHandler(int signum, UDPConnection* instance) {
+    instance->handleSignal(signum); // Call the instance's handleSignal method
+}
+
+// Method to set up the signal handler
+void UDPConnection::setupSignalHandler() {
+    // Use the global instance pointer directly in the signal handler
+    signal(SIGINT, [](int signum) {
+        // Now, we use the global pointer 'g_udpConnectionInstance' directly in the lambda
+        if (g_udpConnectionInstance) {
+            signalHandler(signum, g_udpConnectionInstance); // Call the signalHandler with the global instance
+        }
+    });
+}
+
+// Method to configure network interface (dummy for now)
+bool UDPConnection::configureInterface() {
+    // Add logic to configure the network interface based on the args.interface
+    printf("Configuring network interface: %s\n", args.interface.c_str());
+    return true;
+}
+
+// Method to create a raw socket
+bool UDPConnection::createSocket() {
+    udp_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP)); // Create raw socket for IP packets
+    if (udp_socket < 0) {
+        perror("Error: Could not create socket");
+        return false;
+    }
+    return true;
 }
