@@ -57,8 +57,7 @@ ResourceRecord parseResourceRecord(const std::vector<uint8_t> &data, size_t &off
 void printIPv6(const std::vector<uint8_t> &rData);
 
 void printBytes(const unsigned char *data, int size);
-void parseRawPacket(unsigned char *buffer, ssize_t bufferSize, struct pcap_pkthdr header, inputArguments args, int offset);
-void parseDNSMessage(unsigned char *packet, ssize_t size, char *dateTime, bool v, int offset);
+void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, inputArguments args, int offset);
 void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, DNSSections *sections, char *dateTime);
 void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, char *dateTime);
 int isDNSPacket(const u_char *packet, int length);
