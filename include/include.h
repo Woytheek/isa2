@@ -13,7 +13,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <netinet/ip.h>
-#include <netinet/ip6.h>  // For IPv6 headers
+#include <netinet/ip6.h> // For IPv6 headers
 #include <netinet/udp.h>
 #include <string.h>
 #include <ifaddrs.h>
@@ -26,6 +26,11 @@
 #include <cstdint>
 #include <sstream>
 #include <memory>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <algorithm>
+#include <cctype>
 
 using namespace std;
 

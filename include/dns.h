@@ -2,6 +2,10 @@
 
 #include "include.h"
 #include "argumentParser.h"
+#include "file.h"
+
+
+void loadArguments(inputArguments arguments);
 
 // DNS header structure
 struct DNSHeader
@@ -61,3 +65,4 @@ void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr capt
 void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, DNSSections *sections, char *dateTime);
 void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, char *dateTime);
 int isDNSPacket(const u_char *packet, int length);
+char *getPacketTimestamp(struct pcap_pkthdr header, inputArguments args);

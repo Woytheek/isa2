@@ -1,7 +1,15 @@
 #include "../include/dns.h"
 
+inputArguments argsDns;
+
+void loadArguments(inputArguments arguments)
+{
+    argsDns = arguments;
+}
+
 void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, inputArguments args, int offset)
 {
+    loadArguments(args);
     char *dateTime = getPacketTimestamp(captureHeader, args); // Get timestamp
 
     struct ip *ipHeader = (struct ip *)(packet + offset); // Skip Ethernet header
@@ -535,6 +543,14 @@ std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset)
         }
         name += std::string(data.begin() + offset, data.begin() + offset + len) + ".";
         offset += len;
+    }
+
+    // write domain name to file
+    if (argsDns.d)
+    {
+        fileHandler file(argsDns);
+        file.writeLine(name);
+        file.removeEmptyLines();
     }
     return name;
 }
