@@ -163,52 +163,59 @@ void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, c
            (dnsHeader->flags & 0x0010) >> 4,
            (dnsHeader->flags & 0x000F));
 
-    printf("Flags: 0x%04X\n", dnsHeader->flags); // TODO: DELETE DEBUG PRINT
-    printf("\n");
-    printSections(dnsHeader, sections, packet);
-
+    // printf("Flags: 0x%04X\n", dnsHeader->flags); // TODO: DELETE DEBUG PRINT
+    printSections(sections, packet);
     printf("====================\n");
 }
 
-void printSections(DNSHeader *header, DNSSections *sections, const std::vector<uint8_t> &packet)
+void printSections(DNSSections *sections, const std::vector<uint8_t> &packet)
 {
-    if (header->qdCount > 0)
+    if (sections->questions.size() > 0)
     {
         printQuestionSection(sections->questions);
     }
 
-    if (header->anCount > 0)
+    if (sections->answers.size() > 0)
     {
+        printf("\n");
         printf("[Answer Section]\n");
         for (const auto &answer : sections->answers)
         {
             printResourceRecord(answer, packet);
         }
-        printf("\n");
     }
 
-    if (header->nsCount > 0)
+    if (sections->authorities.size() > 0)
     {
+        printf("\n");
         printf("[Authority Section]\n");
         for (const auto &authority : sections->authorities)
         {
             printResourceRecord(authority, packet);
         }
-        printf("\n");
     }
 
-    if (header->arCount > 0)
+    if (sections->additionals.size() > 0)
     {
+        printf("\n");
         printf("[Additional Section]\n");
         for (const auto &additional : sections->additionals)
         {
             printResourceRecord(additional, packet);
         }
-        printf("\n");
     }
 }
 void printQuestionSection(const std::vector<QuestionSection> &questions)
 {
+    for (const auto &question : questions)
+    {
+        if (question.qType != 1 && question.qType != 2 && question.qType != 5 && question.qType != 6 && question.qType != 15 && question.qType != 28 && question.qType != 33)
+        {
+            return;
+        }
+    }
+
+    printf("\n");
     printf("[Question Section]\n");
     for (const auto &question : questions)
     {
@@ -260,10 +267,14 @@ void printQuestionSection(const std::vector<QuestionSection> &questions)
             break;
         }
     }
-    printf("\n");
 }
 void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t> &packet)
 {
+    if (record.type != 1 && record.type != 2 && record.type != 5 && record.type != 6 && record.type != 15 && record.type != 28 && record.type != 33)
+    {
+        return;
+    }
+
     std::string recordClass = "";
     switch (record.classCode)
     {
@@ -323,7 +334,6 @@ void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t
         break;
     case 6:
         mname = readDomainName(packet, tempOffset);
-        tempOffset = record.rDataOffset + mname.size() + 1;
         rname = readDomainName(packet, tempOffset);
         serial = (packet[tempOffset] << 24) | (packet[tempOffset + 1] << 16) | (packet[tempOffset + 2] << 8) | packet[tempOffset + 3];
         refresh = (packet[tempOffset + 4] << 24) | (packet[tempOffset + 5] << 16) | (packet[tempOffset + 6] << 8) | packet[tempOffset + 7];
@@ -466,9 +476,8 @@ int isDNSPacket(const u_char *packet, int length)
             if (ip6_header->ip6_nxt != IPPROTO_UDP)
             {
                 printf("NOT UDP (IPv6) %X\n", ip6_header->ip6_nxt);
-                return 0; // Not UDP
+                return -1; // Not UDP
             }
-            printf("IPv6 UDP\n");
 
             // Move to the start of the UDP header
             struct udphdr *udp = (struct udphdr *)(packet + offset + sizeof(struct ip6_hdr));
@@ -479,6 +488,7 @@ int isDNSPacket(const u_char *packet, int length)
                 printf("DNS (IPv6)\n");
                 return offset; // It's a DNS packet
             }
+            printf("NOT DNS (IPv6)\n");
         }
     }
     return -1; // Nejde o DNS paket

@@ -90,26 +90,34 @@ bool fileHandler::removeEmptyLines()
 bool fileHandler::writeLine(const std::string &line)
 {
     std::string newLine = removeTrailingDots(line);
-    if (!openFile()) // Ensure file is open before proceeding
+
+    // check if newline contains no dots
+    if (newLine.find('.') == std::string::npos)
     {
         return false;
     }
 
-    // First, check if the line already exists in the file
-    std::string currentLine;
-
-    bool lineExists = false;
-
-    // Read the file to check for existing line
+    // Ensure file path is correctly set based on arguments
     if (args.d)
     {
         filePath = args.domainsFile;
     }
-    if (args.t)
+    else if (args.t)
     {
         filePath = args.translationsFile;
     }
-    std::ifstream inFile(filePath); // Assumes filePath is a member variable
+
+    // Ensure file is open for both reading and writing
+    if (!openFile())
+    {
+        return false;
+    }
+
+    // Check if the line already exists in the file
+    std::string currentLine;
+    bool lineExists = false;
+    std::ifstream inFile(filePath); // Open the file to read contents
+
     if (inFile.is_open())
     {
         while (std::getline(inFile, currentLine))
@@ -128,6 +136,7 @@ bool fileHandler::writeLine(const std::string &line)
     {
         file << newLine << std::endl;
     }
+
     closeFile();
     return true;
 }

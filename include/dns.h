@@ -51,7 +51,7 @@ void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header);
 
 void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSections *sections);
 
-void printSections(DNSHeader *header, DNSSections *sections, const std::vector<uint8_t> &packet);
+void printSections(DNSSections *sections, const std::vector<uint8_t> &packet);
 
 void printQuestionSection(const std::vector<QuestionSection> &questions);
 
