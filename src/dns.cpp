@@ -28,6 +28,7 @@ void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr capt
 
         // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
         dnsSize = size - (offset + (ipHeader->ip_hl * 4) + 8);
+        ipInfo->srcPort = ntohs(((struct udphdr *)(packet + offset + (ipHeader->ip_hl * 4)))->uh_sport);
         ipInfo->dstPort = ntohs(((struct udphdr *)(packet + offset + (ipHeader->ip_hl * 4)))->uh_dport);
     }
 
@@ -40,6 +41,7 @@ void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr capt
         inet_ntop(AF_INET6, &(ip6_header->ip6_dst), ipInfo->dstIP6, INET6_ADDRSTRLEN);
         dnsPayload = packet + offset + sizeof(struct ip6_hdr) + 8; // Přeskočíme IP header
         dnsSize = size - (offset + sizeof(struct ip6_hdr) + 8);    // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
+        ipInfo->srcPort = ntohs(((struct udphdr *)(packet + offset + sizeof(struct ip6_hdr)))->uh_sport);
         ipInfo->dstPort = ntohs(((struct udphdr *)(packet + offset + sizeof(struct ip6_hdr)))->uh_dport);
     }
 
@@ -171,7 +173,7 @@ void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, I
     printf("Timestamp: %s\n", dateTime);
     printf("SrcIP: %s\n", ipInfo->isIPv6 ? ipInfo->srcIP6 : ipInfo->srcIP);
     printf("DstIP: %s\n", ipInfo->isIPv6 ? ipInfo->dstIP6 : ipInfo->dstIP);
-    printf("SrcPort: UDP/%d\n", PORT);
+    printf("SrcPort: UDP/%d\n", ipInfo->srcPort);
     printf("DstPort: UDP/%d\n", ipInfo->dstPort);
     printf("Identifier: 0x%X\n", dnsHeader->id);
     printf("Flags: QR=%d, OPCODE=%d, AA=%d, TC=%d, RD=%d, RA=%d, AD=%d, CD=%d, RCODE=%d\n",

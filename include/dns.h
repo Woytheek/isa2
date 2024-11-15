@@ -12,6 +12,7 @@ struct IPInfo
     char dstIP[INET_ADDRSTRLEN];
     char srcIP6[INET6_ADDRSTRLEN];
     char dstIP6[INET6_ADDRSTRLEN];
+    int srcPort;
     int dstPort;
     bool isIPv6 = false;
 };
