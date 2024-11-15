@@ -4,8 +4,17 @@
 #include "argumentParser.h"
 #include "file.h"
 
-
 void loadArguments(inputArguments arguments);
+
+struct IPInfo
+{
+    char srcIP[INET_ADDRSTRLEN];
+    char dstIP[INET_ADDRSTRLEN];
+    char srcIP6[INET6_ADDRSTRLEN];
+    char dstIP6[INET6_ADDRSTRLEN];
+    int dstPort;
+    bool isIPv6 = false;
+};
 
 // DNS header structure
 struct DNSHeader
@@ -62,7 +71,7 @@ void printIPv6(const std::vector<uint8_t> &rData);
 
 void printBytes(const unsigned char *data, int size);
 void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, inputArguments args, int offset);
-void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, DNSSections *sections, char *dateTime);
-void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, char *dateTime);
+void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime);
+void printSimplifiedDNS(DNSHeader *dnsHeader, IPInfo *ipInfo, char *dateTime);
 int isDNSPacket(const u_char *packet, int length);
 char *getPacketTimestamp(struct pcap_pkthdr header, inputArguments args);

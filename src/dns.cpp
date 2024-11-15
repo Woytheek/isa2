@@ -12,19 +12,36 @@ void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr capt
     loadArguments(args);
     char *dateTime = getPacketTimestamp(captureHeader, args); // Get timestamp
 
-    struct ip *ipHeader = (struct ip *)(packet + offset); // Skip Ethernet header
+    struct ip6_hdr *ip6_header;
+    struct ip *ipHeader;
+    IPInfo *ipInfo = new IPInfo();
+    unsigned char *dnsPayload;
+    ssize_t dnsSize;
 
-    // Extrakce zdrojové a cílové IP adresy
-    char srcIP[INET_ADDRSTRLEN];
-    char dstIP[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &(ipHeader->ip_src), srcIP, INET_ADDRSTRLEN);
-    inet_ntop(AF_INET, &(ipHeader->ip_dst), dstIP, INET_ADDRSTRLEN);
+    if (packet[offset] == 0x45 && packet[offset + 1] == 0x00 && packet[offset - 1] == 0x00 && packet[offset - 2] == 0x08)
+    {
+        ipHeader = (struct ip *)(packet + offset); // Skip Ethernet header
+        inet_ntop(AF_INET, &(ipHeader->ip_src), ipInfo->srcIP, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &(ipHeader->ip_dst), ipInfo->dstIP, INET_ADDRSTRLEN);
+        // Přeskočíme Ethernet, IP a UDP headery k dosažení DNS sekce
+        dnsPayload = packet + offset + (ipHeader->ip_hl * 4) + 8; // 8 bajtů pro délku UDP headeru
 
-    // Přeskočíme Ethernet, IP a UDP headery k dosažení DNS sekce
-    unsigned char *dnsPayload = packet + offset + (ipHeader->ip_hl * 4) + 8; // 8 bajtů pro délku UDP headeru
+        // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
+        dnsSize = size - (offset + (ipHeader->ip_hl * 4) + 8);
+        ipInfo->dstPort = ntohs(((struct udphdr *)(packet + offset + (ipHeader->ip_hl * 4)))->uh_dport);
+    }
 
-    // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
-    ssize_t dnsSize = size - (offset + (ipHeader->ip_hl * 4) + 8);
+    // printf("----------------------------OFFSET: %d\n", offset); // TODO  DEBUG PRINT
+    if (packet[offset] == 0x60)
+    {
+        ipInfo->isIPv6 = true;
+        ip6_header = (struct ip6_hdr *)(packet + offset); // Nastavíme ukazatel na začátek IP hlavičky
+        inet_ntop(AF_INET6, &(ip6_header->ip6_src), ipInfo->srcIP6, INET6_ADDRSTRLEN);
+        inet_ntop(AF_INET6, &(ip6_header->ip6_dst), ipInfo->dstIP6, INET6_ADDRSTRLEN);
+        dnsPayload = packet + offset + sizeof(struct ip6_hdr) + 8; // Přeskočíme IP header
+        dnsSize = size - (offset + sizeof(struct ip6_hdr) + 8);    // Výpočet velikosti DNS: celková velikost - Ethernet header - IP header - UDP header
+        ipInfo->dstPort = ntohs(((struct udphdr *)(packet + offset + sizeof(struct ip6_hdr)))->uh_dport);
+    }
 
     auto header = std::make_unique<DNSHeader>(); // Using unique_ptr for automatic memory management
     std::vector<uint8_t> dnsBody(dnsPayload, dnsPayload + dnsSize);
@@ -35,11 +52,11 @@ void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr capt
 
     if (args.v)
     {
-        printVerboseDNS(dnsBody, header.get(), srcIP, dstIP, sections.get(), dateTime);
+        printVerboseDNS(dnsBody, header.get(), ipInfo, sections.get(), dateTime);
     }
     else
     {
-        printSimplifiedDNS(header.get(), srcIP, dstIP, dateTime);
+        printSimplifiedDNS(header.get(), ipInfo, dateTime);
     }
     return;
 }
@@ -133,24 +150,29 @@ void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSe
     }
 }
 
-void printSimplifiedDNS(DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, char *dateTime)
+void printSimplifiedDNS(DNSHeader *dnsHeader, IPInfo *ipInfo, char *dateTime)
 {
     char qr = (dnsHeader->flags & 0x8000) ? 'R' : 'Q';
     int qdCount = dnsHeader->qdCount;
     int anCount = dnsHeader->anCount;
     int nsCount = dnsHeader->nsCount;
     int arCount = dnsHeader->arCount;
-
-    printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, srcIP, dstIP, qr, qdCount, anCount, nsCount, arCount);
+    if (ipInfo->isIPv6)
+    {
+        printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, ipInfo->srcIP6, ipInfo->dstIP6, qr, qdCount, anCount, nsCount, arCount);
+    }
+    else
+    {
+        printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, ipInfo->srcIP, ipInfo->dstIP, qr, qdCount, anCount, nsCount, arCount);
+    }
 }
-void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, const char *srcIP, const char *dstIP, DNSSections *sections, char *dateTime)
+void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime)
 {
     printf("Timestamp: %s\n", dateTime);
-    printf("SrcIP: %s\n", srcIP);
-    printf("DstIP: %s\n", dstIP);
+    printf("SrcIP: %s\n", ipInfo->isIPv6 ? ipInfo->srcIP6 : ipInfo->srcIP);
+    printf("DstIP: %s\n", ipInfo->isIPv6 ? ipInfo->dstIP6 : ipInfo->dstIP);
     printf("SrcPort: UDP/%d\n", PORT);
-    printf("DstPort: UDP\n");
-
+    printf("DstPort: UDP/%d\n", ipInfo->dstPort);
     printf("Identifier: 0x%X\n", dnsHeader->id);
     printf("Flags: QR=%d, OPCODE=%d, AA=%d, TC=%d, RD=%d, RA=%d, AD=%d, CD=%d, RCODE=%d\n",
            (dnsHeader->flags & 0x8000) >> 15,
