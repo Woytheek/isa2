@@ -14,7 +14,7 @@ private:
     std::ofstream file;
     std::string filePath;
 
-    bool openFile();
+    bool openFile(std::string openFile);
     void closeFile();
     std::string removeTrailingDots(const std::string &line);
 };

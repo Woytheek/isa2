@@ -321,6 +321,7 @@ void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t
 
     // A
     std::string dname;
+    std::string ip;
 
     // MX
     std::string exchange;
@@ -343,10 +344,14 @@ void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t
     uint16_t weight;
     uint16_t port;
 
+    Translation tran;
+
     switch (record.type)
     {
     case 1:
-        printf("%s %d %s A %d.%d.%d.%d\n", record.name.c_str(), record.ttl, recordClass.c_str(), (int)record.rData[0], (int)record.rData[1], (int)record.rData[2], (int)record.rData[3]);
+        ip = std::to_string((int)record.rData[0]) + "." + std::to_string((int)record.rData[1]) + "." + std::to_string((int)record.rData[2]) + "." + std::to_string((int)record.rData[3]);
+        printf("%s %d %s A %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), ip.c_str());
+        tran.loadTranslation(record.name, ip);
         break;
     case 2:
         dname = readDomainName(packet, tempOffset);
@@ -375,6 +380,7 @@ void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t
     case 28:
         printf("%s %d %s AAAA ", record.name.c_str(), record.ttl, recordClass.c_str());
         printIPv6(record.rData);
+        tran.loadTranslation(record.name, "IPv6 placeholder");
         break;
     case 33:
         priority = (record.rData[0] << 8) | record.rData[1];
@@ -388,6 +394,7 @@ void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t
         // Should not happen
         break;
     }
+    tran.printTranslations(); // TODO: DELETE DEBUG PRINT
 }
 
 void printBytes(const unsigned char *data, int size)
@@ -475,8 +482,7 @@ int isDNSPacket(const u_char *packet, int length)
             // Kontrola, zda je protokol UDP
             if (ip_header->ip_p != IPPROTO_UDP)
             {
-                printf("NOT UDP\n"); // TODO DELETE DEBUG PRINT
-                return -1;           // Nejde o UDP paket
+                return -1; // Nejde o UDP paket
             }
 
             // Posun na začátek UDP hlavičky
@@ -499,7 +505,6 @@ int isDNSPacket(const u_char *packet, int length)
             // Check if the Next Header is UDP (17 for UDP)
             if (ip6_header->ip6_nxt != IPPROTO_UDP)
             {
-                printf("NOT UDP (IPv6) %X\n", ip6_header->ip6_nxt);
                 return -1; // Not UDP
             }
 
@@ -509,10 +514,8 @@ int isDNSPacket(const u_char *packet, int length)
             // Check for DNS (source or destination port 53)
             if (ntohs(udp->uh_sport) == 53 || ntohs(udp->uh_dport) == 53)
             {
-                printf("DNS (IPv6)\n");
                 return offset; // It's a DNS packet
             }
-            printf("NOT DNS (IPv6)\n");
         }
     }
     return -1; // Nejde o DNS paket

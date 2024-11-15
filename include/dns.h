@@ -3,6 +3,7 @@
 #include "include.h"
 #include "argumentParser.h"
 #include "file.h"
+#include "translation.h"
 
 void loadArguments(inputArguments arguments);
 

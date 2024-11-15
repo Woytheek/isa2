@@ -108,7 +108,7 @@ void UDPConnection::setupSignalHandler()
 bool UDPConnection::configureInterface()
 {
     // Add logic to configure the network interface based on the args.interface
-    printf("Configuring network interface: %s\n", args.interface.c_str());
+    // printf("Configuring network interface: %s\n", args.interface.c_str());
     return true;
 }
 

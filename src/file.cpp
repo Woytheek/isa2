@@ -4,12 +4,12 @@
 fileHandler::fileHandler(const inputArguments &args) : args(args) {}
 
 // Opens the file specified in args.domainsFile
-bool fileHandler::openFile()
+bool fileHandler::openFile(std::string openFile)
 {
-    file.open(args.domainsFile, std::ios::out | std::ios::app);
+    file.open(openFile, std::ios::out | std::ios::app);
     if (!file.is_open())
     {
-        std::cerr << "Error: Could not open file " << args.domainsFile << "\n";
+        std::cerr << "Error: Could not open file " << openFile << "\n";
         return false;
     }
     return true;
@@ -101,16 +101,11 @@ bool fileHandler::writeLine(const std::string &line)
     if (args.d)
     {
         filePath = args.domainsFile;
-    }
-    else if (args.t)
-    {
-        filePath = args.translationsFile;
-    }
-
-    // Ensure file is open for both reading and writing
-    if (!openFile())
-    {
-        return false;
+        // Ensure file is open for both reading and writing
+        if (!openFile(args.domainsFile))
+        {
+            return false;
+        }
     }
 
     // Check if the line already exists in the file
