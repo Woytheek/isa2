@@ -5,10 +5,12 @@
 #include "file.h"
 #include "translation.h"
 
-void loadArguments(inputArguments arguments);
-
-struct IPInfo
+void printBytes(const unsigned char *data, int size);
+void printIPv6(const std::vector<uint8_t> &rData);
+// Třída pro uchování informací o IP adrese
+class IPInfo
 {
+public:
     char srcIP[INET_ADDRSTRLEN];
     char dstIP[INET_ADDRSTRLEN];
     char srcIP6[INET6_ADDRSTRLEN];
@@ -16,28 +18,39 @@ struct IPInfo
     int srcPort;
     int dstPort;
     bool isIPv6 = false;
+
+    IPInfo() : srcPort(0), dstPort(0), isIPv6(false) {}
 };
 
-// DNS header structure
-struct DNSHeader
+// Třída pro DNS hlavičku
+class DNSHeader
 {
+public:
     uint16_t id;      // Transaction ID
     uint16_t flags;   // Flags and response codes
     uint16_t qdCount; // Number of questions
     uint16_t anCount; // Number of answers
     uint16_t nsCount; // Number of authority records
     uint16_t arCount; // Number of additional records
+
+    DNSHeader() : id(0), flags(0), qdCount(0), anCount(0), nsCount(0), arCount(0) {}
 };
 
-struct QuestionSection
+// Třída pro DNS sekci dotazů
+class QuestionSection
 {
+public:
     std::string qName;
     uint16_t qType;
     uint16_t qClass;
+
+    QuestionSection() : qType(0), qClass(0) {}
 };
 
-struct ResourceRecord
+// Třída pro DNS záznamy
+class ResourceRecord
 {
+public:
     std::string name;
     uint16_t type;
     uint16_t classCode;
@@ -47,33 +60,51 @@ struct ResourceRecord
 
     size_t rDataOffset;
     bool skip = false;
+
+    ResourceRecord() : type(0), classCode(0), ttl(0), rdLength(0), rDataOffset(0), skip(false) {}
 };
 
-struct DNSSections
+// Třída pro celé DNS sekce (dotazy, odpovědi, autoritativní záznamy atd.)
+class DNSSections
 {
+public:
     std::vector<QuestionSection> questions;
     std::vector<ResourceRecord> answers;
     std::vector<ResourceRecord> authorities;
     std::vector<ResourceRecord> additionals;
+
+    DNSSections() {}
 };
 
-std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset);
-void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header);
+// Třída pro zpracování DNS paketů a jejich výpisy
+class DNSParser
+{
+public:
+    static void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, inputArguments args, int offset);
+    static int isDNSPacket(const u_char *packet, int length);
 
-void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSections *sections);
+private:
+    static void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header);
+    static void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSections *sections);
+    static ResourceRecord parseResourceRecord(const std::vector<uint8_t> &data, size_t &offset);
 
-void printSections(DNSSections *sections, const std::vector<uint8_t> &packet);
+    static char *getPacketTimestamp(struct pcap_pkthdr header, inputArguments args);
+    static std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset);
 
-void printQuestionSection(const std::vector<QuestionSection> &questions);
+    static void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime);
+    static void printSimplifiedDNS(DNSHeader *dnsHeader, IPInfo *ipInfo, char *dateTime);
+    static void printSections(DNSSections *sections, const std::vector<uint8_t> &packet);
+    static void printQuestionSection(const std::vector<QuestionSection> &questions);
+    static void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t> &packet);
+};
 
-void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t> &packet);
-ResourceRecord parseResourceRecord(const std::vector<uint8_t> &data, size_t &offset);
+class ArgumentLoader
+{
+public:
+    static inputArguments argsDns; // Definice statického člena
 
-void printIPv6(const std::vector<uint8_t> &rData);
-
-void printBytes(const unsigned char *data, int size);
-void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, inputArguments args, int offset);
-void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime);
-void printSimplifiedDNS(DNSHeader *dnsHeader, IPInfo *ipInfo, char *dateTime);
-int isDNSPacket(const u_char *packet, int length);
-char *getPacketTimestamp(struct pcap_pkthdr header, inputArguments args);
+    static void loadArguments(inputArguments arguments)
+    {
+        argsDns = arguments; // Přiřazení argumentů do statické proměnné
+    }
+};

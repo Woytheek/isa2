@@ -32,7 +32,7 @@ void PCAPParser::closeFile()
 int PCAPParser::getDNSOffset(const unsigned char *packet, int length) const
 {
     // Placeholder function to check if a packet is DNS and return the offset
-    return isDNSPacket(packet, length);
+    return DNSParser::isDNSPacket(packet, length);
 }
 
 int PCAPParser::parseFile()
@@ -54,7 +54,8 @@ int PCAPParser::parseFile()
         if (offset != -1)
         {
             // Parse the raw packet if it's a DNS packet
-            parseRawPacket((unsigned char *)packet, header.len, header, args, offset);
+            //parseRawPacket((unsigned char *)packet, header.len, header, args, offset);
+            DNSParser::parseRawPacket((unsigned char *)packet, header.len, header, args, offset);
         }
     }
 
