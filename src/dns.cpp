@@ -1,8 +1,5 @@
 #include "../include/dns.h"
 
-// Definice statického člena argsDns
-inputArguments ArgumentLoader::argsDns;
-// Funkce pro parsování DNS hlavičky
 void DNSParser::parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header)
 {
     // Ověření, že paket má dostatečnou délku pro parsování hlavičky
@@ -26,9 +23,9 @@ void DNSParser::parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *he
     // Pokud je třeba, můžeme přidat další zpracování nebo validace
     // Například ověření některých polí nebo konverzi některých hodnot
 }
-void DNSParser::parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, inputArguments args, int offset)
+void DNSParser::parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, int offset)
 {
-    char *dateTime = getPacketTimestamp(captureHeader, args); // Získání časového razítka
+    char *dateTime = getPacketTimestamp(captureHeader); // Získání časového razítka
     // Proměnné pro hlavičky IP a DNS
     struct ip6_hdr *ip6_header;
     struct ip *ipHeader;
@@ -295,14 +292,13 @@ int DNSParser::isDNSPacket(const u_char *packet, int length)
     return -1; // Nejedná se o DNS paket
 }
 
-char *DNSParser::getPacketTimestamp(struct pcap_pkthdr header, inputArguments args)
+char *DNSParser::getPacketTimestamp(struct pcap_pkthdr header)
 {
     char *dateTime = new char[20]; // Dynamicky alokované pole pro uložení formátovaného času
     struct tm *timeinfo;
 
     if (args.p)
     {
-        printf("args.p: %d\n", args.p);
         timeinfo = localtime(&header.ts.tv_sec); // Konverze sekund z PCAP timestamp na čas
     }
     else
@@ -339,11 +335,12 @@ std::string DNSParser::readDomainName(const std::vector<uint8_t> &data, size_t &
         offset += len;                                                                 // Posuneme offset o délku segmentu
     }
 
-    /*// Uložení názvu domény do souboru, pokud je to požadováno    TODO - zatím nefunkční
-    if (argsDns.d)
+    /*
+    //triggers segmentation fault
+    if (args.d)
     {
-        fileHandler file(argsDns);
-        file.writeLine(name); // Zapíšeme název domény do souboru
+        fileHandler file(args);
+        file.writeLine(name);    // Zapíšeme název domény do souboru
         file.removeEmptyLines(); // Odstraníme prázdné řádky, pokud existují
     }*/
 
@@ -353,7 +350,6 @@ std::string DNSParser::readDomainName(const std::vector<uint8_t> &data, size_t &
 ResourceRecord DNSParser::parseResourceRecord(const std::vector<uint8_t> &data, size_t &offset)
 {
     ResourceRecord record;
-
     // Načteme název domény (záznam, jehož jméno je na začátku)
     record.name = readDomainName(data, offset);
 

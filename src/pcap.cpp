@@ -49,10 +49,12 @@ int PCAPParser::parseFile()
     while ((packet = pcap_next(handle, &header)) != nullptr)
     {
         // Check if packet is DNS and get offset
+
+        DNSParser parser(args);
         int offset = getDNSOffset(packet, header.len);
         if (offset != -1)
         {
-            DNSParser::parseRawPacket((unsigned char *)packet, header.len, header, args, offset);
+            parser.parseRawPacket((unsigned char *)packet, header.len, header, offset);
         }
     }
 

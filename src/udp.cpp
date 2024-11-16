@@ -65,11 +65,12 @@ int UDPConnection::start()
         {
             struct pcap_pkthdr header;
 
-            int offset = DNSParser::isDNSPacket(buffer, bytes_received);
+            DNSParser parser(args);
+            int offset = parser.isDNSPacket(buffer, bytes_received);
             if (offset != -1)
             {
                 // Zavolání funkce pro zpracování paketu
-                DNSParser::parseRawPacket(buffer, bytes_received, header, args, offset);
+                parser.parseRawPacket(buffer, bytes_received, header, offset);
             }
         }
     }

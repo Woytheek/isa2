@@ -15,7 +15,6 @@ OBJS = $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
 
 # Binaries
 TARGET = $(BINDIR)/dns-monitor
-CLIENT = ./test/udp-client
 
 # Default target
 all: $(TARGET) $(CLIENT)
@@ -28,10 +27,6 @@ $(TARGET): $(OBJS)
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(INCDIR)/*.h
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
-
-# Build the UDP client for testing
-$(CLIENT): test/udp-client.cpp
-	$(CC) $(CFLAGS) -o $(CLIENT) test/udp-client.cpp $(LDFLAGS)
 
 # Clean target to remove compiled objects and binaries
 clean:

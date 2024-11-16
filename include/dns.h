@@ -79,32 +79,25 @@ public:
 // Třída pro zpracování DNS paketů a jejich výpisy
 class DNSParser
 {
+private:
+    inputArguments args; // Argumenty jako člen třídy
+
 public:
-    static void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, inputArguments args, int offset);
+    DNSParser(const inputArguments &arguments) : args(arguments) {} // Konstruktor s argumenty
+    void parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, int offset);
     static int isDNSPacket(const u_char *packet, int length);
 
 private:
-    static void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header);
-    static void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSections *sections);
-    static ResourceRecord parseResourceRecord(const std::vector<uint8_t> &data, size_t &offset);
+    void parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header);
+    void parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSections *sections);
+    ResourceRecord parseResourceRecord(const std::vector<uint8_t> &data, size_t &offset);
 
-    static char *getPacketTimestamp(struct pcap_pkthdr header, inputArguments args);
-    static std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset);
+    char *getPacketTimestamp(struct pcap_pkthdr header);
+    std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset);
 
-    static void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime);
-    static void printSimplifiedDNS(DNSHeader *dnsHeader, IPInfo *ipInfo, char *dateTime);
-    static void printSections(DNSSections *sections, const std::vector<uint8_t> &packet);
-    static void printQuestionSection(const std::vector<QuestionSection> &questions);
-    static void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t> &packet);
-};
-
-class ArgumentLoader
-{
-public:
-    static inputArguments argsDns; // Definice statického člena
-
-    static void loadArguments(inputArguments arguments)
-    {
-        argsDns = arguments; // Přiřazení argumentů do statické proměnné
-    }
+    void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime);
+    void printSimplifiedDNS(DNSHeader *dnsHeader, IPInfo *ipInfo, char *dateTime);
+    void printSections(DNSSections *sections, const std::vector<uint8_t> &packet);
+    void printQuestionSection(const std::vector<QuestionSection> &questions);
+    void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t> &packet);
 };

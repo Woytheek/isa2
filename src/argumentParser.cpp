@@ -74,7 +74,7 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
         }
     }
     //print all arguments
-    /*std::cout << "Arguments: " << std::endl;
+    std::cout << "Arguments: " << std::endl;
     std::cout << "Interface: " << out.interface << std::endl;
     std::cout << "PCAP File: " << out.pcapFile << std::endl;
     std::cout << "Domains File: " << out.domainsFile << std::endl;
@@ -83,5 +83,5 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
     std::cout << "i: " << out.i << std::endl;
     std::cout << "p: " << out.p << std::endl;
     std::cout << "d: " << out.d << std::endl;
-    std::cout << "t: " << out.t << std::endl;*/
+    std::cout << "t: " << out.t << std::endl;
 }
