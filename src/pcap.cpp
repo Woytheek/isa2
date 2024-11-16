@@ -42,7 +42,6 @@ int PCAPParser::parseFile()
     {
         return 1;
     }
-
     struct pcap_pkthdr header;
     const unsigned char *packet;
 
@@ -53,8 +52,6 @@ int PCAPParser::parseFile()
         int offset = getDNSOffset(packet, header.len);
         if (offset != -1)
         {
-            // Parse the raw packet if it's a DNS packet
-            //parseRawPacket((unsigned char *)packet, header.len, header, args, offset);
             DNSParser::parseRawPacket((unsigned char *)packet, header.len, header, args, offset);
         }
     }

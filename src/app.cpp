@@ -7,7 +7,7 @@ DNSMonitor::DNSMonitor(int argc, char *argv[])
 
 int DNSMonitor::run()
 {
-    if (!args.pcapFile.empty())
+    if (args.p)
     {
         // Handle PCAP file if specified
         if (!handlePCAPFile())

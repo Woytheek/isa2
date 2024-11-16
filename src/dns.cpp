@@ -28,9 +28,7 @@ void DNSParser::parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *he
 }
 void DNSParser::parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, inputArguments args, int offset)
 {
-    // Získání časové značky paketu
-    char *dateTime = getPacketTimestamp(captureHeader, args);
-
+    char *dateTime = getPacketTimestamp(captureHeader, args); // Získání časového razítka
     // Proměnné pro hlavičky IP a DNS
     struct ip6_hdr *ip6_header;
     struct ip *ipHeader;
@@ -299,12 +297,12 @@ int DNSParser::isDNSPacket(const u_char *packet, int length)
 
 char *DNSParser::getPacketTimestamp(struct pcap_pkthdr header, inputArguments args)
 {
-    static char dateTime[20]; // Statická pole pro uložení formátovaného času
+    char *dateTime = new char[20]; // Dynamicky alokované pole pro uložení formátovaného času
     struct tm *timeinfo;
 
     if (args.p)
     {
-        // Pokud je paket zachycen z PCAP souboru
+        printf("args.p: %d\n", args.p);
         timeinfo = localtime(&header.ts.tv_sec); // Konverze sekund z PCAP timestamp na čas
     }
     else
@@ -316,7 +314,7 @@ char *DNSParser::getPacketTimestamp(struct pcap_pkthdr header, inputArguments ar
     }
 
     // Formátování času do řetězce ve formátu "YYYY-MM-DD HH:MM:SS"
-    strftime(dateTime, sizeof(dateTime), "%Y-%m-%d %H:%M:%S", timeinfo);
+    strftime(dateTime, 20, "%Y-%m-%d %H:%M:%S", timeinfo);
 
     return dateTime; // Vrátí formátovaný čas jako řetězec
 }
@@ -432,16 +430,6 @@ void DNSParser::printSections(DNSSections *sections, const std::vector<uint8_t> 
 
 void DNSParser::printQuestionSection(const std::vector<QuestionSection> &questions)
 {
-    // Zkontrolujeme, zda všechny dotazy mají platný typ (z 1, 2, 5, 6, 15, 28, 33)
-    for (const auto &question : questions)
-    {
-        if (question.qType != 1 && question.qType != 2 && question.qType != 5 && question.qType != 6 &&
-            question.qType != 15 && question.qType != 28 && question.qType != 33)
-        {
-            return; // Pokud je nějaký dotaz neplatný, nebudeme sekci tisknout
-        }
-    }
-
     // Pokud jsou všechny dotazy validní, vypíšeme hlavičku sekce
     printf("\n[Question Section]\n");
     for (const auto &question : questions)
@@ -467,32 +455,64 @@ void DNSParser::printQuestionSection(const std::vector<QuestionSection> &questio
             break;
         }
 
-        // Vytiskneme typ dotazu podle hodnoty qType
         switch (question.qType)
         {
         case 1:
-            printf("A\n"); // IPv4 adresa
+            printf("A\n"); // IPv4 address
             break;
         case 2:
-            printf("NS\n"); // Jmenný server
+            printf("NS\n"); // Name server
             break;
         case 5:
-            printf("CNAME\n"); // Kanonické jméno
+            printf("CNAME\n"); // Canonical name for an alias
             break;
         case 6:
-            printf("SOA\n"); // Start autority
+            printf("SOA\n"); // Start of authority
             break;
         case 15:
-            printf("MX\n"); // Poštovní směrovač
+            printf("MX\n"); // Mail exchange
             break;
         case 28:
-            printf("AAAA\n"); // IPv6 adresa
+            printf("AAAA\n"); // IPv6 address
             break;
         case 33:
-            printf("SRV\n"); // Službový záznam
+            printf("SRV\n"); // Service record
+            break;
+        case 3:
+            printf("MD\n"); // Mail destination (Obsolete - use MX)
+            break;
+        case 4:
+            printf("MF\n"); // Mail forwarder (Obsolete - use MX)
+            break;
+        case 7:
+            printf("MB\n"); // Mailbox domain name (Experimental)
+            break;
+        case 8:
+            printf("MG\n"); // Mail group member (Experimental)
+            break;
+        case 9:
+            printf("MR\n"); // Mail rename domain name (Experimental)
+            break;
+        case 10:
+            printf("NULL\n"); // Null RR (Experimental)
+            break;
+        case 11:
+            printf("WKS\n"); // Well-known service description
+            break;
+        case 12:
+            printf("PTR\n"); // Domain name pointer
+            break;
+        case 13:
+            printf("HINFO\n"); // Host information
+            break;
+        case 14:
+            printf("MINFO\n"); // Mailbox or mail list information
+            break;
+        case 16:
+            printf("TXT\n"); // Text strings
             break;
         default:
-            printf("%d\n", question.qType); // V případě neznámého typu vytiskneme číslo
+            printf("%d\n", question.qType); // If the type is unknown, print the number
             break;
         }
     }
@@ -609,7 +629,6 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
 
     tran.printTranslations(); // Debug výpis pro překlady (pokud je potřeba)
 }
-
 
 void printBytes(const unsigned char *data, int size)
 {

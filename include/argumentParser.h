@@ -10,11 +10,11 @@ struct inputArguments
     string domainsFile;      // Name of the domains file
     string translationsFile; // Name of the translations file
 
-    bool i; // Flag for interface
-    bool p; // Flag for PCAP file
-    bool v; // Flag for verbose
-    bool d; // Flag for domains file
-    bool t; // Flag for translations file
+    bool i = 0; // Flag for interface
+    bool p = 0; // Flag for PCAP file
+    bool v = 0; // Flag for verbose
+    bool d = 0; // Flag for domains file
+    bool t = 0; // Flag for translations file
 };
 
 class argumentParser

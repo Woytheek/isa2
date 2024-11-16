@@ -73,4 +73,15 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
             err(1, "Unknown argument: %s\n", argument.c_str());
         }
     }
+    //print all arguments
+    /*std::cout << "Arguments: " << std::endl;
+    std::cout << "Interface: " << out.interface << std::endl;
+    std::cout << "PCAP File: " << out.pcapFile << std::endl;
+    std::cout << "Domains File: " << out.domainsFile << std::endl;
+    std::cout << "Translations File: " << out.translationsFile << std::endl;
+    std::cout << "Verbose: " << out.v << std::endl;
+    std::cout << "i: " << out.i << std::endl;
+    std::cout << "p: " << out.p << std::endl;
+    std::cout << "d: " << out.d << std::endl;
+    std::cout << "t: " << out.t << std::endl;*/
 }
