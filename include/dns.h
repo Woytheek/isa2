@@ -2,11 +2,11 @@
 
 #include "include.h"
 #include "argumentParser.h"
-#include "file.h"
 #include "translation.h"
 
 void printBytes(const unsigned char *data, int size);
 void printIPv6(const std::vector<uint8_t> &rData);
+
 // Třída pro uchování informací o IP adrese
 class IPInfo
 {
@@ -100,4 +100,6 @@ private:
     void printSections(DNSSections *sections, const std::vector<uint8_t> &packet);
     void printQuestionSection(const std::vector<QuestionSection> &questions);
     void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t> &packet);
+
+    std::string ipv6ToString(const std::vector<uint8_t> &rData);
 };

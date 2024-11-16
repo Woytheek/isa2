@@ -1,28 +1,5 @@
 #include "../include/dns.h"
 
-void DNSParser::parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header)
-{
-    // Ověření, že paket má dostatečnou délku pro parsování hlavičky
-    if (packet.size() < 12)
-    {
-        std::cerr << "Chyba: Příliš krátký paket pro parsování DNS hlavičky!" << std::endl;
-        return;
-    }
-
-    // Offset začíná na 0 pro čtení hlavičky
-    int offset = 0;
-
-    // Parsování jednotlivých částí DNS hlavičky
-    header->id = (packet[offset] << 8) | packet[offset + 1];            // Transaction ID
-    header->flags = (packet[offset + 2] << 8) | packet[offset + 3];     // Flags
-    header->qdCount = (packet[offset + 4] << 8) | packet[offset + 5];   // Počet dotazů
-    header->anCount = (packet[offset + 6] << 8) | packet[offset + 7];   // Počet odpovědí
-    header->nsCount = (packet[offset + 8] << 8) | packet[offset + 9];   // Počet autoritativních záznamů
-    header->arCount = (packet[offset + 10] << 8) | packet[offset + 11]; // Počet dalších záznamů
-
-    // Pokud je třeba, můžeme přidat další zpracování nebo validace
-    // Například ověření některých polí nebo konverzi některých hodnot
-}
 void DNSParser::parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, int offset)
 {
     char *dateTime = getPacketTimestamp(captureHeader); // Získání časového razítka
@@ -90,6 +67,29 @@ void DNSParser::parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_
     return;
 }
 
+void DNSParser::parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *header)
+{
+    // Ověření, že paket má dostatečnou délku pro parsování hlavičky
+    if (packet.size() < 12)
+    {
+        std::cerr << "Chyba: Příliš krátký paket pro parsování DNS hlavičky!" << std::endl;
+        return;
+    }
+
+    // Offset začíná na 0 pro čtení hlavičky
+    int offset = 0;
+
+    // Parsování jednotlivých částí DNS hlavičky
+    header->id = (packet[offset] << 8) | packet[offset + 1];            // Transaction ID
+    header->flags = (packet[offset + 2] << 8) | packet[offset + 3];     // Flags
+    header->qdCount = (packet[offset + 4] << 8) | packet[offset + 5];   // Počet dotazů
+    header->anCount = (packet[offset + 6] << 8) | packet[offset + 7];   // Počet odpovědí
+    header->nsCount = (packet[offset + 8] << 8) | packet[offset + 9];   // Počet autoritativních záznamů
+    header->arCount = (packet[offset + 10] << 8) | packet[offset + 11]; // Počet dalších záznamů
+
+    // Pokud je třeba, můžeme přidat další zpracování nebo validace
+    // Například ověření některých polí nebo konverzi některých hodnot
+}
 void DNSParser::parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *header, DNSSections *sections)
 {
     size_t offset = 0;
@@ -189,7 +189,6 @@ void DNSParser::printSimplifiedDNS(DNSHeader *dnsHeader, IPInfo *ipInfo, char *d
         printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, ipInfo->srcIP, ipInfo->dstIP, qr, qdCount, anCount, nsCount, arCount);
     }
 }
-
 void DNSParser::printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime)
 {
     // Výpis časového razítka
@@ -220,101 +219,6 @@ void DNSParser::printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *d
     printf("====================\n");
 }
 
-int DNSParser::isDNSPacket(const u_char *packet, int length)
-{
-    // Zkontrolujeme, zda je délka paketu dostatečná pro Ethernet a IP hlavičky
-    if (length < 42) // 14 (Ethernet) + 20 (IP) + 8 (UDP) = 42
-    {
-        return -1; // Nejde o DNS paket, protože je příliš krátký
-    }
-
-    for (int offset = 0; offset < length - 1; offset++)
-    {
-        // Kontrola pro IPv4
-        if (packet[offset] == 0x45 && packet[offset + 1] == 0x00 && packet[offset - 1] == 0x00 && packet[offset - 2] == 0x08)
-        {
-            // Vytvoření objektu pro uchování informací o IP
-
-            IPInfo ipInfo;
-            struct ip *ip_header = (struct ip *)(packet + offset);
-
-            // Uložení IPv4 adres do objektu IPInfo
-            inet_ntop(AF_INET, &(ip_header->ip_src), ipInfo.srcIP, INET_ADDRSTRLEN);
-            inet_ntop(AF_INET, &(ip_header->ip_dst), ipInfo.dstIP, INET_ADDRSTRLEN);
-            ipInfo.srcPort = 0; // Tento detail by bylo nutné získat z UDP hlavičky (pokud by bylo potřeba)
-            ipInfo.dstPort = 0; // Stejně jako u srcPort
-
-            // Kontrola, zda je protokol UDP
-            if (ip_header->ip_p != IPPROTO_UDP)
-            {
-                return -1; // Nejde o UDP paket
-            }
-
-            // Posun na začátek UDP hlavičky
-            struct udphdr *udp = (struct udphdr *)(packet + offset + (ip_header->ip_hl * 4));
-
-            // Kontrola portů UDP (zdrojový nebo cílový port 53 pro DNS)
-            if (ntohs(udp->uh_sport) == 53 || ntohs(udp->uh_dport) == 53)
-            {
-                return offset; // Tento paket je DNS
-            }
-        }
-
-        // Kontrola pro IPv6 (nový kód)
-        if (packet[offset] == 0x60 && packet[offset + 1] == 0x00 && packet[offset - 1] == 0xDD && packet[offset - 2] == 0x86)
-        {
-            // Vytvoření objektu pro uchování informací o IPv6
-            IPInfo ipInfo;
-            struct ip6_hdr *ip6_header = (struct ip6_hdr *)(packet + offset);
-
-            // Uložení IPv6 adres do objektu IPInfo
-            inet_ntop(AF_INET6, &(ip6_header->ip6_src), ipInfo.srcIP6, INET6_ADDRSTRLEN);
-            inet_ntop(AF_INET6, &(ip6_header->ip6_dst), ipInfo.dstIP6, INET6_ADDRSTRLEN);
-            ipInfo.isIPv6 = true; // Určujeme, že se jedná o IPv6 paket
-
-            // Zkontrolujeme, zda je Next Header UDP (17 pro UDP)
-            if (ip6_header->ip6_nxt != IPPROTO_UDP)
-            {
-                return -1; // Nejde o UDP
-            }
-
-            // Posun na začátek UDP hlavičky
-            struct udphdr *udp = (struct udphdr *)(packet + offset + sizeof(struct ip6_hdr));
-
-            // Kontrola portů UDP (zdrojový nebo cílový port 53 pro DNS)
-            if (ntohs(udp->uh_sport) == 53 || ntohs(udp->uh_dport) == 53)
-            {
-                return offset; // Tento paket je DNS
-            }
-        }
-    }
-
-    return -1; // Nejedná se o DNS paket
-}
-
-char *DNSParser::getPacketTimestamp(struct pcap_pkthdr header)
-{
-    char *dateTime = new char[20]; // Dynamicky alokované pole pro uložení formátovaného času
-    struct tm *timeinfo;
-
-    if (args.p)
-    {
-        timeinfo = localtime(&header.ts.tv_sec); // Konverze sekund z PCAP timestamp na čas
-    }
-    else
-    {
-        // Pokud je paket zachycen živě
-        time_t rawtime;
-        time(&rawtime);                 // Získání aktuálního času
-        timeinfo = localtime(&rawtime); // Konverze na lokální čas
-    }
-
-    // Formátování času do řetězce ve formátu "YYYY-MM-DD HH:MM:SS"
-    strftime(dateTime, 20, "%Y-%m-%d %H:%M:%S", timeinfo);
-
-    return dateTime; // Vrátí formátovaný čas jako řetězec
-}
-
 std::string DNSParser::readDomainName(const std::vector<uint8_t> &data, size_t &offset)
 {
     std::string name;
@@ -334,15 +238,6 @@ std::string DNSParser::readDomainName(const std::vector<uint8_t> &data, size_t &
         name += std::string(data.begin() + offset, data.begin() + offset + len) + "."; // Přidáme segment názvu do celkového názvu
         offset += len;                                                                 // Posuneme offset o délku segmentu
     }
-
-    /*
-    //triggers segmentation fault
-    if (args.d)
-    {
-        fileHandler file(args);
-        file.writeLine(name);    // Zapíšeme název domény do souboru
-        file.removeEmptyLines(); // Odstraníme prázdné řádky, pokud existují
-    }*/
 
     return name; // Vrátíme celý název domény
 }
@@ -513,7 +408,6 @@ void DNSParser::printQuestionSection(const std::vector<QuestionSection> &questio
         }
     }
 }
-
 void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t> &packet)
 {
     // Kontrola platnosti typu záznamu
@@ -539,7 +433,6 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
         recordClass = "HS";
         break;
     default:
-        recordClass = "UNKNOWN";
         break;
     }
 
@@ -551,7 +444,7 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
     uint32_t serial, refresh, retry, expire, minimum;
 
     // Objekt pro překládání
-    Translation tran;
+    Translation tran(args.domainsFile, args.translationsFile);
 
     // Výběr dle typu záznamu
     switch (record.type)
@@ -568,6 +461,8 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
     {
         dname = readDomainName(packet, tempOffset);
         printf("%s %d %s NS %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), dname.c_str());
+        tran.loadTranslation(record.name);
+        tran.loadTranslation(dname);
         break;
     }
 
@@ -575,6 +470,8 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
     {
         cname = readDomainName(packet, tempOffset);
         printf("%s %d %s CNAME %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), cname.c_str());
+        tran.loadTranslation(record.name);
+        tran.loadTranslation(cname);
         break;
     }
 
@@ -588,6 +485,9 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
         expire = (packet[tempOffset + 12] << 24) | (packet[tempOffset + 13] << 16) | (packet[tempOffset + 14] << 8) | packet[tempOffset + 15];
         minimum = (packet[tempOffset + 16] << 24) | (packet[tempOffset + 17] << 16) | (packet[tempOffset + 18] << 8) | packet[tempOffset + 19];
         printf("%s %d %s SOA %s %s %d %d %d %d %d\n", record.name.c_str(), record.ttl, recordClass.c_str(), mname.c_str(), rname.c_str(), serial, refresh, retry, expire, minimum);
+        tran.loadTranslation(record.name);
+        tran.loadTranslation(mname);
+        tran.loadTranslation(rname);
         break;
     }
 
@@ -597,14 +497,16 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
         exchange = readDomainName(packet, MXtempOffset);
         uint16_t preference = (record.rData[0] << 8) | record.rData[1];
         printf("%s %d %s MX %d %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), preference, exchange.c_str());
+        tran.loadTranslation(record.name);
+        tran.loadTranslation(exchange);
         break;
     }
 
     case 28: // AAAA (IPv6 Address)
     {
-        printf("%s %d %s AAAA ", record.name.c_str(), record.ttl, recordClass.c_str());
-        printIPv6(record.rData); // Tisk IPv6 adresy
-        tran.loadTranslation(record.name, "IPv6 placeholder");
+        std::string ipv6 = ipv6ToString(record.rData);
+        printf("%s %d %s AAAA %s", record.name.c_str(), record.ttl, recordClass.c_str(), ipv6.c_str());
+        tran.loadTranslation(record.name, ipv6);
         break;
     }
 
@@ -616,6 +518,7 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
         tempOffset = record.rDataOffset + 6;
         target = readDomainName(packet, tempOffset);
         printf("%s %d %s SRV %d %d %d %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), priority, weight, port, target.c_str());
+        tran.loadTranslation(target);
         break;
     }
 
@@ -623,7 +526,15 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
         break; // Neznámý typ záznamu (nepotřebujeme jej zpracovávat)
     }
 
-    tran.printTranslations(); // Debug výpis pro překlady (pokud je potřeba)
+    if (args.t)
+    {
+        tran.printTranslations();
+    }
+
+    if (args.d)
+    {
+        tran.printDomains();
+    }
 }
 
 void printBytes(const unsigned char *data, int size)
@@ -639,7 +550,6 @@ void printBytes(const unsigned char *data, int size)
     }
     printf("\n"); // End with a newline
 }
-
 void printIPv6(const std::vector<uint8_t> &rData)
 {
     // Ensure the rData size is correct for IPv6
@@ -691,4 +601,152 @@ void printIPv6(const std::vector<uint8_t> &rData)
         printf("%x", blocks[i]);
     }
     printf("\n");
+}
+
+std::string DNSParser::ipv6ToString(const std::vector<uint8_t> &rData)
+{
+    std::string ipv6;
+    // Ensure the rData size is correct for IPv6
+    if (rData.size() != 16)
+    {
+        return "Invalid IPv6 address data size.";
+    }
+
+    // Step 1: Convert 16 bytes to 8 16-bit blocks
+    uint16_t blocks[8];
+    for (size_t i = 0; i < 8; ++i)
+    {
+        blocks[i] = (rData[2 * i] << 8) | rData[2 * i + 1];
+    }
+
+    // Step 2: Find the longest run of zero blocks for "::" compression
+    int max_zeros = 0, best_zero_start = -1;
+    for (int i = 0; i < 8; ++i)
+    {
+        if (blocks[i] == 0)
+        {
+            int j = i;
+            while (j < 8 && blocks[j] == 0)
+                ++j;
+            int zero_count = j - i;
+            if (zero_count > max_zeros)
+            {
+                max_zeros = zero_count;
+                best_zero_start = i;
+            }
+            i = j;
+        }
+    }
+
+    // Step 3: Print the blocks with compression
+    for (int i = 0; i < 8; ++i)
+    {
+        if (i == best_zero_start)
+        { // Start of "::" compression
+            ipv6 += "::";
+            i += max_zeros - 1; // Skip over the zero sequence
+            continue;
+        }
+        if (i > 0 && i != best_zero_start + max_zeros)
+        {
+            ipv6 += ":";
+        }
+        ipv6 += std::to_string(blocks[i]);
+    }
+    return ipv6;
+}
+
+int DNSParser::isDNSPacket(const u_char *packet, int length)
+{
+    // Zkontrolujeme, zda je délka paketu dostatečná pro Ethernet a IP hlavičky
+    if (length < 42) // 14 (Ethernet) + 20 (IP) + 8 (UDP) = 42
+    {
+        return -1; // Nejde o DNS paket, protože je příliš krátký
+    }
+
+    for (int offset = 0; offset < length - 1; offset++)
+    {
+        // Kontrola pro IPv4
+        if (packet[offset] == 0x45 && packet[offset + 1] == 0x00 && packet[offset - 1] == 0x00 && packet[offset - 2] == 0x08)
+        {
+            // Vytvoření objektu pro uchování informací o IP
+
+            IPInfo ipInfo;
+            struct ip *ip_header = (struct ip *)(packet + offset);
+
+            // Uložení IPv4 adres do objektu IPInfo
+            inet_ntop(AF_INET, &(ip_header->ip_src), ipInfo.srcIP, INET_ADDRSTRLEN);
+            inet_ntop(AF_INET, &(ip_header->ip_dst), ipInfo.dstIP, INET_ADDRSTRLEN);
+            ipInfo.srcPort = 0; // Tento detail by bylo nutné získat z UDP hlavičky (pokud by bylo potřeba)
+            ipInfo.dstPort = 0; // Stejně jako u srcPort
+
+            // Kontrola, zda je protokol UDP
+            if (ip_header->ip_p != IPPROTO_UDP)
+            {
+                return -1; // Nejde o UDP paket
+            }
+
+            // Posun na začátek UDP hlavičky
+            struct udphdr *udp = (struct udphdr *)(packet + offset + (ip_header->ip_hl * 4));
+
+            // Kontrola portů UDP (zdrojový nebo cílový port 53 pro DNS)
+            if (ntohs(udp->uh_sport) == 53 || ntohs(udp->uh_dport) == 53)
+            {
+                return offset; // Tento paket je DNS
+            }
+        }
+
+        // Kontrola pro IPv6 (nový kód)
+        if (packet[offset] == 0x60 && packet[offset + 1] == 0x00 && packet[offset - 1] == 0xDD && packet[offset - 2] == 0x86)
+        {
+            // Vytvoření objektu pro uchování informací o IPv6
+            IPInfo ipInfo;
+            struct ip6_hdr *ip6_header = (struct ip6_hdr *)(packet + offset);
+
+            // Uložení IPv6 adres do objektu IPInfo
+            inet_ntop(AF_INET6, &(ip6_header->ip6_src), ipInfo.srcIP6, INET6_ADDRSTRLEN);
+            inet_ntop(AF_INET6, &(ip6_header->ip6_dst), ipInfo.dstIP6, INET6_ADDRSTRLEN);
+            ipInfo.isIPv6 = true; // Určujeme, že se jedná o IPv6 paket
+
+            // Zkontrolujeme, zda je Next Header UDP (17 pro UDP)
+            if (ip6_header->ip6_nxt != IPPROTO_UDP)
+            {
+                return -1; // Nejde o UDP
+            }
+
+            // Posun na začátek UDP hlavičky
+            struct udphdr *udp = (struct udphdr *)(packet + offset + sizeof(struct ip6_hdr));
+
+            // Kontrola portů UDP (zdrojový nebo cílový port 53 pro DNS)
+            if (ntohs(udp->uh_sport) == 53 || ntohs(udp->uh_dport) == 53)
+            {
+                return offset; // Tento paket je DNS
+            }
+        }
+    }
+
+    return -1; // Nejedná se o DNS paket
+}
+
+char *DNSParser::getPacketTimestamp(struct pcap_pkthdr header)
+{
+    char *dateTime = new char[20]; // Dynamicky alokované pole pro uložení formátovaného času
+    struct tm *timeinfo;
+
+    if (args.p)
+    {
+        timeinfo = localtime(&header.ts.tv_sec); // Konverze sekund z PCAP timestamp na čas
+    }
+    else
+    {
+        // Pokud je paket zachycen živě
+        time_t rawtime;
+        time(&rawtime);                 // Získání aktuálního času
+        timeinfo = localtime(&rawtime); // Konverze na lokální čas
+    }
+
+    // Formátování času do řetězce ve formátu "YYYY-MM-DD HH:MM:SS"
+    strftime(dateTime, 20, "%Y-%m-%d %H:%M:%S", timeinfo);
+
+    return dateTime; // Vrátí formátovaný čas jako řetězec
 }
