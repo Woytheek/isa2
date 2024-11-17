@@ -7,6 +7,7 @@ LDFLAGS = -lm -lpcap
 SRCDIR = src
 INCDIR = include
 OBJDIR = obj
+FILES = test/files
 BINDIR = .
 
 # Source and object files
@@ -31,6 +32,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(INCDIR)/*.h
 # Clean target to remove compiled objects and binaries
 clean:
 	rm -rf $(OBJDIR) $(TARGET) $(CLIENT)
+	rm $(FILES)/*.txt
 
 # Run the DNS monitor (requires sudo for privileged port)
 run: $(TARGET)

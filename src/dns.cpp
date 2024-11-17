@@ -63,7 +63,7 @@ void DNSParser::parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_
     }
     else
     {
-        printSimplifiedDNS(header.get(), &ipInfo, dateTime);
+        printSimplifiedDNS(dnsBody, header.get(), &ipInfo, sections.get(), dateTime);
     }
     delete[] dateTime;
     return;
@@ -168,7 +168,7 @@ void DNSParser::parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *he
     }
 }
 
-void DNSParser::printSimplifiedDNS(DNSHeader *dnsHeader, IPInfo *ipInfo, char *dateTime)
+void DNSParser::printSimplifiedDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime)
 {
     // Stanovení typu zprávy (Query nebo Response)
     char qr = (dnsHeader->flags & 0x8000) ? 'R' : 'Q';
@@ -190,6 +190,9 @@ void DNSParser::printSimplifiedDNS(DNSHeader *dnsHeader, IPInfo *ipInfo, char *d
         // Výpis pro IPv4
         printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, ipInfo->srcIP, ipInfo->dstIP, qr, qdCount, anCount, nsCount, arCount);
     }
+
+    // Výpis DNS sekcí (dotazy, odpovědi, autoritativní záznamy, atd.)
+    printSections(sections, packet);
 }
 void DNSParser::printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime)
 {
@@ -293,7 +296,10 @@ void DNSParser::printSections(DNSSections *sections, const std::vector<uint8_t> 
     // Pokud existují odpovědi v sekci 'answers', vypíšeme je
     if (!sections->answers.empty())
     {
-        printf("\n[Answer Section]\n");
+        if (args.v)
+        {
+            printf("\n[Answer Section]\n");
+        }
         for (const auto &answer : sections->answers)
         {
             printResourceRecord(answer, packet);
@@ -303,7 +309,10 @@ void DNSParser::printSections(DNSSections *sections, const std::vector<uint8_t> 
     // Pokud existují autoritativní záznamy v sekci 'authorities', vypíšeme je
     if (!sections->authorities.empty())
     {
-        printf("\n[Authority Section]\n");
+        if (args.v)
+        {
+            printf("\n[Authority Section]\n");
+        }
         for (const auto &authority : sections->authorities)
         {
             printResourceRecord(authority, packet);
@@ -313,7 +322,10 @@ void DNSParser::printSections(DNSSections *sections, const std::vector<uint8_t> 
     // Pokud existují další záznamy v sekci 'additionals', vypíšeme je
     if (!sections->additionals.empty())
     {
-        printf("\n[Additional Section]\n");
+        if (args.v)
+        {
+            printf("\n[Additional Section]\n");
+        }
         for (const auto &additional : sections->additionals)
         {
             printResourceRecord(additional, packet);
@@ -324,89 +336,97 @@ void DNSParser::printSections(DNSSections *sections, const std::vector<uint8_t> 
 void DNSParser::printQuestionSection(const std::vector<QuestionSection> &questions)
 {
     // Pokud jsou všechny dotazy validní, vypíšeme hlavičku sekce
-    printf("\n[Question Section]\n");
     for (const auto &question : questions)
     {
-        // Vytiskneme název dotazu
-        printf("%s ", question.qName.c_str());
-
-        // Vytiskneme třídu dotazu podle hodnoty qClass
-        switch (question.qClass)
+        // load translation
+        (void)question;
+    }
+    if (args.v)
+    {
+        printf("\n[Question Section]\n");
+        for (const auto &question : questions)
         {
-        default:
-        case 1:
-            printf("IN ");
-            break;
-        case 2:
-            printf("CS ");
-            break;
-        case 3:
-            printf("CH ");
-            break;
-        case 4:
-            printf("HS ");
-            break;
-        }
+            // Vytiskneme název dotazu
+            printf("%s ", question.qName.c_str());
 
-        switch (question.qType)
-        {
-        case 1:
-            printf("A\n"); // IPv4 address
-            break;
-        case 2:
-            printf("NS\n"); // Name server
-            break;
-        case 5:
-            printf("CNAME\n"); // Canonical name for an alias
-            break;
-        case 6:
-            printf("SOA\n"); // Start of authority
-            break;
-        case 15:
-            printf("MX\n"); // Mail exchange
-            break;
-        case 28:
-            printf("AAAA\n"); // IPv6 address
-            break;
-        case 33:
-            printf("SRV\n"); // Service record
-            break;
-        case 3:
-            printf("MD\n"); // Mail destination (Obsolete - use MX)
-            break;
-        case 4:
-            printf("MF\n"); // Mail forwarder (Obsolete - use MX)
-            break;
-        case 7:
-            printf("MB\n"); // Mailbox domain name (Experimental)
-            break;
-        case 8:
-            printf("MG\n"); // Mail group member (Experimental)
-            break;
-        case 9:
-            printf("MR\n"); // Mail rename domain name (Experimental)
-            break;
-        case 10:
-            printf("NULL\n"); // Null RR (Experimental)
-            break;
-        case 11:
-            printf("WKS\n"); // Well-known service description
-            break;
-        case 12:
-            printf("PTR\n"); // Domain name pointer
-            break;
-        case 13:
-            printf("HINFO\n"); // Host information
-            break;
-        case 14:
-            printf("MINFO\n"); // Mailbox or mail list information
-            break;
-        case 16:
-            printf("TXT\n"); // Text strings
-            break;
-        default:
-            printf("%d\n", question.qType); // If the type is unknown, print the number
-            break;
+            // Vytiskneme třídu dotazu podle hodnoty qClass
+            switch (question.qClass)
+            {
+            default:
+            case 1:
+                printf("IN ");
+                break;
+            case 2:
+                printf("CS ");
+                break;
+            case 3:
+                printf("CH ");
+                break;
+            case 4:
+                printf("HS ");
+                break;
+            }
+
+            switch (question.qType)
+            {
+            case 1:
+                printf("A\n"); // IPv4 address
+                break;
+            case 2:
+                printf("NS\n"); // Name server
+                break;
+            case 5:
+                printf("CNAME\n"); // Canonical name for an alias
+                break;
+            case 6:
+                printf("SOA\n"); // Start of authority
+                break;
+            case 15:
+                printf("MX\n"); // Mail exchange
+                break;
+            case 28:
+                printf("AAAA\n"); // IPv6 address
+                break;
+            case 33:
+                printf("SRV\n"); // Service record
+                break;
+            case 3:
+                printf("MD\n"); // Mail destination (Obsolete - use MX)
+                break;
+            case 4:
+                printf("MF\n"); // Mail forwarder (Obsolete - use MX)
+                break;
+            case 7:
+                printf("MB\n"); // Mailbox domain name (Experimental)
+                break;
+            case 8:
+                printf("MG\n"); // Mail group member (Experimental)
+                break;
+            case 9:
+                printf("MR\n"); // Mail rename domain name (Experimental)
+                break;
+            case 10:
+                printf("NULL\n"); // Null RR (Experimental)
+                break;
+            case 11:
+                printf("WKS\n"); // Well-known service description
+                break;
+            case 12:
+                printf("PTR\n"); // Domain name pointer
+                break;
+            case 13:
+                printf("HINFO\n"); // Host information
+                break;
+            case 14:
+                printf("MINFO\n"); // Mailbox or mail list information
+                break;
+            case 16:
+                printf("TXT\n"); // Text strings
+                break;
+            default:
+                printf("%d\n", question.qType); // If the type is unknown, print the number
+                break;
+            }
         }
     }
 }
@@ -454,7 +474,10 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
     case 1: // A (IPv4 Address)
     {
         ip = std::to_string((int)record.rData[0]) + "." + std::to_string((int)record.rData[1]) + "." + std::to_string((int)record.rData[2]) + "." + std::to_string((int)record.rData[3]);
-        printf("%s %d %s A %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), ip.c_str());
+        if (args.v)
+        {
+            printf("%s %d %s A %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), ip.c_str());
+        }
         tran.loadTranslation(record.name, ip);
         break;
     }
@@ -462,7 +485,10 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
     case 2: // NS (Name Server)
     {
         dname = readDomainName(packet, tempOffset);
-        printf("%s %d %s NS %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), dname.c_str());
+        if (args.v)
+        {
+            printf("%s %d %s NS %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), dname.c_str());
+        }
         tran.loadTranslation(record.name);
         tran.loadTranslation(dname);
         break;
@@ -471,7 +497,10 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
     case 5: // CNAME (Canonical Name)
     {
         cname = readDomainName(packet, tempOffset);
-        printf("%s %d %s CNAME %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), cname.c_str());
+        if (args.v)
+        {
+            printf("%s %d %s CNAME %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), cname.c_str());
+        }
         tran.loadTranslation(record.name);
         tran.loadTranslation(cname);
         break;
@@ -481,15 +510,23 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
     {
         mname = readDomainName(packet, tempOffset);
         rname = readDomainName(packet, tempOffset);
-        serial = (packet[tempOffset] << 24) | (packet[tempOffset + 1] << 16) | (packet[tempOffset + 2] << 8) | packet[tempOffset + 3];
-        refresh = (packet[tempOffset + 4] << 24) | (packet[tempOffset + 5] << 16) | (packet[tempOffset + 6] << 8) | packet[tempOffset + 7];
-        retry = (packet[tempOffset + 8] << 24) | (packet[tempOffset + 9] << 16) | (packet[tempOffset + 10] << 8) | packet[tempOffset + 11];
-        expire = (packet[tempOffset + 12] << 24) | (packet[tempOffset + 13] << 16) | (packet[tempOffset + 14] << 8) | packet[tempOffset + 15];
-        minimum = (packet[tempOffset + 16] << 24) | (packet[tempOffset + 17] << 16) | (packet[tempOffset + 18] << 8) | packet[tempOffset + 19];
-        printf("%s %d %s SOA %s %s %d %d %d %d %d\n", record.name.c_str(), record.ttl, recordClass.c_str(), mname.c_str(), rname.c_str(), serial, refresh, retry, expire, minimum);
+
+        // Parse 32-bit SOA fields
+        serial = ntohl(*(uint32_t *)(packet.data() + tempOffset));
+        refresh = ntohl(*(uint32_t *)(packet.data() + tempOffset + 4));
+        retry = ntohl(*(uint32_t *)(packet.data() + tempOffset + 8));
+        expire = ntohl(*(uint32_t *)(packet.data() + tempOffset + 12));
+        minimum = ntohl(*(uint32_t *)(packet.data() + tempOffset + 16));
+        tempOffset += 20;
+
+        // Print parsed SOA record
+        if (args.v)
+        {
+            printf("%s %d %s SOA %s %s %u %u %u %u %u\n", record.name.c_str(), record.ttl, recordClass.c_str(), mname.c_str(), rname.c_str(), serial, refresh, retry, expire, minimum);
+        }
+        // Translation load
         tran.loadTranslation(record.name);
         tran.loadTranslation(mname);
-        tran.loadTranslation(rname);
         break;
     }
 
@@ -498,7 +535,10 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
         size_t MXtempOffset = tempOffset + 2;
         exchange = readDomainName(packet, MXtempOffset);
         uint16_t preference = (record.rData[0] << 8) | record.rData[1];
-        printf("%s %d %s MX %d %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), preference, exchange.c_str());
+        if (args.v)
+        {
+            printf("%s %d %s MX %d %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), preference, exchange.c_str());
+        }
         tran.loadTranslation(record.name);
         tran.loadTranslation(exchange);
         break;
@@ -507,7 +547,10 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
     case 28: // AAAA (IPv6 Address)
     {
         std::string ipv6 = ipv6ToString(record.rData);
-        printf("%s %d %s AAAA %s", record.name.c_str(), record.ttl, recordClass.c_str(), ipv6.c_str());
+        if (args.v)
+        {
+            printf("%s %d %s AAAA %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), ipv6.c_str());
+        }
         tran.loadTranslation(record.name, ipv6);
         break;
     }
@@ -519,7 +562,10 @@ void DNSParser::printResourceRecord(const ResourceRecord &record, const std::vec
         port = (record.rData[4] << 8) | record.rData[5];
         tempOffset = record.rDataOffset + 6;
         target = readDomainName(packet, tempOffset);
-        printf("%s %d %s SRV %d %d %d %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), priority, weight, port, target.c_str());
+        if (args.v)
+        {
+            printf("%s %d %s SRV %d %d %d %s\n", record.name.c_str(), record.ttl, recordClass.c_str(), priority, weight, port, target.c_str());
+        }
         tran.loadTranslation(target);
         break;
     }
