@@ -95,8 +95,7 @@ private:
     char *getPacketTimestamp(struct pcap_pkthdr header);
     std::string readDomainName(const std::vector<uint8_t> &data, size_t &offset);
 
-    void printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime);
-    void printSimplifiedDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime);
+    void handleDNSData(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime);
     void printSections(DNSSections *sections, const std::vector<uint8_t> &packet);
     void printQuestionSection(const std::vector<QuestionSection> &questions);
     void printResourceRecord(const ResourceRecord &record, const std::vector<uint8_t> &packet);

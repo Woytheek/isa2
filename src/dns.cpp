@@ -56,15 +56,8 @@ void DNSParser::parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_
     auto sections = std::make_unique<DNSSections>();
     parseDNSPacket(dnsBody, header.get(), sections.get());
 
-    // Podle parametrů vypíšeme výstup
-    if (args.v)
-    {
-        printVerboseDNS(dnsBody, header.get(), &ipInfo, sections.get(), dateTime);
-    }
-    else
-    {
-        printSimplifiedDNS(dnsBody, header.get(), &ipInfo, sections.get(), dateTime);
-    }
+    handleDNSData(dnsBody, header.get(), &ipInfo, sections.get(), dateTime);
+
     delete[] dateTime;
     return;
 }
@@ -168,60 +161,53 @@ void DNSParser::parseDNSPacket(const std::vector<uint8_t> &packet, DNSHeader *he
     }
 }
 
-void DNSParser::printSimplifiedDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime)
+void DNSParser::handleDNSData(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime)
 {
-    // Stanovení typu zprávy (Query nebo Response)
-    char qr = (dnsHeader->flags & 0x8000) ? 'R' : 'Q';
-
-    // Počty jednotlivých sekcí v DNS paketu
-    int qdCount = dnsHeader->qdCount; // Počet dotazů
-    int anCount = dnsHeader->anCount; // Počet odpovědí
-    int nsCount = dnsHeader->nsCount; // Počet autoritativních záznamů
-    int arCount = dnsHeader->arCount; // Počet dodatečných záznamů
-
-    // Kontrola, zda je použitá IPv6
-    if (ipInfo->isIPv6)
+    if (!args.v)
     {
-        // Výpis pro IPv6
-        printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, ipInfo->srcIP6, ipInfo->dstIP6, qr, qdCount, anCount, nsCount, arCount);
+        // Stanovení typu zprávy (Query nebo Response)
+        char qr = (dnsHeader->flags & 0x8000) ? 'R' : 'Q';
+
+        // Počty jednotlivých sekcí v DNS paketu
+        int qdCount = dnsHeader->qdCount; // Počet dotazů
+        int anCount = dnsHeader->anCount; // Počet odpovědí
+        int nsCount = dnsHeader->nsCount; // Počet autoritativních záznamů
+        int arCount = dnsHeader->arCount; // Počet dodatečných záznamů
+
+        printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, ipInfo->isIPv6 ? ipInfo->srcIP6 : ipInfo->srcIP, ipInfo->isIPv6 ? ipInfo->dstIP6 : ipInfo->dstIP, qr, qdCount, anCount, nsCount, arCount);
     }
     else
     {
-        // Výpis pro IPv4
-        printf("%s %s -> %s (%c %d/%d/%d/%d)\n", dateTime, ipInfo->srcIP, ipInfo->dstIP, qr, qdCount, anCount, nsCount, arCount);
+
+        // Výpis časového razítka
+        printf("Timestamp: %s\n", dateTime);
+
+        // Výpis IP informací, zajištění správné verze IP (IPv4/IPv6)
+        printf("SrcIP: %s\n", ipInfo->isIPv6 ? ipInfo->srcIP6 : ipInfo->srcIP);
+        printf("DstIP: %s\n", ipInfo->isIPv6 ? ipInfo->dstIP6 : ipInfo->dstIP);
+        printf("SrcPort: UDP/%d\n", ipInfo->srcPort);
+        printf("DstPort: UDP/%d\n", ipInfo->dstPort);
+
+        // Výpis DNS hlavičky
+        printf("Identifier: 0x%X\n", dnsHeader->id);
+        printf("Flags: QR=%d, OPCODE=%d, AA=%d, TC=%d, RD=%d, RA=%d, AD=%d, CD=%d, RCODE=%d\n",
+               (dnsHeader->flags & 0x8000) >> 15, // QR
+               (dnsHeader->flags & 0x7800) >> 11, // OPCODE
+               (dnsHeader->flags & 0x0400) >> 10, // AA
+               (dnsHeader->flags & 0x0200) >> 9,  // TC
+               (dnsHeader->flags & 0x0100) >> 8,  // RD
+               (dnsHeader->flags & 0x0080) >> 7,  // RA
+               (dnsHeader->flags & 0x0020) >> 5,  // AD
+               (dnsHeader->flags & 0x0010) >> 4,  // CD
+               (dnsHeader->flags & 0x000F));      // RCODE
     }
 
-    // Výpis DNS sekcí (dotazy, odpovědi, autoritativní záznamy, atd.)
     printSections(sections, packet);
-}
-void DNSParser::printVerboseDNS(const std::vector<uint8_t> &packet, DNSHeader *dnsHeader, IPInfo *ipInfo, DNSSections *sections, char *dateTime)
-{
-    // Výpis časového razítka
-    printf("Timestamp: %s\n", dateTime);
 
-    // Výpis IP informací, zajištění správné verze IP (IPv4/IPv6)
-    printf("SrcIP: %s\n", ipInfo->isIPv6 ? ipInfo->srcIP6 : ipInfo->srcIP);
-    printf("DstIP: %s\n", ipInfo->isIPv6 ? ipInfo->dstIP6 : ipInfo->dstIP);
-    printf("SrcPort: UDP/%d\n", ipInfo->srcPort);
-    printf("DstPort: UDP/%d\n", ipInfo->dstPort);
-
-    // Výpis DNS hlavičky
-    printf("Identifier: 0x%X\n", dnsHeader->id);
-    printf("Flags: QR=%d, OPCODE=%d, AA=%d, TC=%d, RD=%d, RA=%d, AD=%d, CD=%d, RCODE=%d\n",
-           (dnsHeader->flags & 0x8000) >> 15, // QR
-           (dnsHeader->flags & 0x7800) >> 11, // OPCODE
-           (dnsHeader->flags & 0x0400) >> 10, // AA
-           (dnsHeader->flags & 0x0200) >> 9,  // TC
-           (dnsHeader->flags & 0x0100) >> 8,  // RD
-           (dnsHeader->flags & 0x0080) >> 7,  // RA
-           (dnsHeader->flags & 0x0020) >> 5,  // AD
-           (dnsHeader->flags & 0x0010) >> 4,  // CD
-           (dnsHeader->flags & 0x000F));      // RCODE
-
-    // Výpis DNS sekcí (dotazy, odpovědi, autoritativní záznamy, atd.)
-    printSections(sections, packet);
-    // Oddělení jednotlivých paketů
-    printf("====================\n");
+    if (args.v)
+    {
+        printf("====================\n");
+    }
 }
 
 std::string DNSParser::readDomainName(const std::vector<uint8_t> &data, size_t &offset)

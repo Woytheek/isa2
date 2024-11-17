@@ -31,8 +31,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(INCDIR)/*.h
 
 # Clean target to remove compiled objects and binaries
 clean:
-	rm -rf $(OBJDIR) $(TARGET) $(CLIENT)
-	rm $(FILES)/*.txt
+	rm -rf $(OBJDIR) $(TARGET) $(CLIENT) $(FILES)/*.txt
 
 # Run the DNS monitor (requires sudo for privileged port)
 run: $(TARGET)
