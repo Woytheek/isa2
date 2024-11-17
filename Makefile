@@ -7,7 +7,7 @@ LDFLAGS = -lm -lpcap
 SRCDIR = src
 INCDIR = include
 OBJDIR = obj
-FILES = test/files
+FILES = files
 BINDIR = .
 
 # Source and object files
