@@ -3,6 +3,7 @@
 void DNSParser::parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_pkthdr captureHeader, int offset)
 {
     char *dateTime = getPacketTimestamp(captureHeader); // Získání časového razítka
+
     // Proměnné pro hlavičky IP a DNS
     struct ip6_hdr *ip6_header;
     struct ip *ipHeader;
@@ -64,6 +65,7 @@ void DNSParser::parseRawPacket(unsigned char *packet, ssize_t size, struct pcap_
     {
         printSimplifiedDNS(header.get(), &ipInfo, dateTime);
     }
+    delete[] dateTime;
     return;
 }
 
