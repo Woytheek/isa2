@@ -7,8 +7,6 @@ void Translation::loadTranslation(std::string domain, std::string ip)
 
 void Translation::printTranslations()
 {
-    // otevri translations.txt
-
     for (auto &translation : this->translations)
     {
         if (translation.ip.empty())
@@ -38,7 +36,6 @@ bool Translation::openFile(std::string openFile)
     return true;
 }
 
-// Closes the file
 void Translation::closeFile()
 {
     if (file.is_open())
@@ -47,7 +44,6 @@ void Translation::closeFile()
     }
 }
 
-// Function to remove trailing dots from each word
 std::string Translation::removeTrailingDots(const std::string &line)
 {
     std::stringstream ss(line);

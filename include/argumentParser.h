@@ -1,3 +1,14 @@
+/**
+ * @file argumentParser.h
+ * @author Vojtěch Kuchař (xkucha30@stud.fit.vutbr.cz)
+ * @brief Handles the input arguments.
+ * @version 1.0
+ * @date 2024-11-17
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
+
 #pragma once
 
 #include "include.h"
