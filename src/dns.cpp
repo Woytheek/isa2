@@ -605,10 +605,15 @@ std::string DNSParser::ipv6ToString(const std::vector<uint8_t> &rData)
         {
             ipv6 += ":";
         }
-        ipv6 += std::to_string(blocks[i]);
+
+        // Append the block in hexadecimal format
+        std::stringstream hex_stream;
+        hex_stream << std::hex << std::nouppercase << blocks[i];
+        ipv6 += hex_stream.str();
     }
     return ipv6;
 }
+
 
 int DNSParser::isDNSPacket(const u_char *packet, int length)
 {

@@ -7,6 +7,8 @@ LDFLAGS = -lm -lpcap
 SRCDIR = src
 INCDIR = include
 OBJDIR = obj
+DOCDIR = docs
+TESTDIR = test
 FILES = .
 BINDIR = .
 
@@ -31,12 +33,16 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(INCDIR)/*.h
 
 # Clean target to remove compiled objects and binaries
 clean:
-	rm -rf $(OBJDIR) $(TARGET) $(CLIENT) $(FILES)/domain.txt $(FILES)/translation.txt
+	rm -rf $(OBJDIR) $(TARGET) $(CLIENT) $(FILES)/domain.txt $(FILES)/translation.txt $(DOCDIR) $(TESTDIR)/A/translation.txt $(TESTDIR)/AAAA/translation.txt $(TESTDIR)/CNAME/translation.txt  $(TESTDIR)/BIG/translation.txt $(TESTDIR)/MX/translation.txt $(TESTDIR)/NS/translation.txt $(TESTDIR)/SOA/translation.txt 
+
 
 # Run the DNS monitor (requires sudo for privileged port)
 run: $(TARGET)
-	./dns-monitor
+	sudo ./dns-monitor -p test/test1.pcap -d domain.txt -t translation.txt -v
 
 # Run tests by launching the DNS monitor and using 'dig' as a subprocess
 tests: 
-	./dns-monitor -p test/test5ipv6.pcap -d domain.txt -t translation.txt -v
+	cd test && python3 test.py
+
+tests_clean:
+	rm -rf $(TESTDIR)/A/translation.txt $(TESTDIR)/AAAA/translation.txt $(TESTDIR)/CNAME/translation.txt $(TESTDIR)/MX/translation.txt $(TESTDIR)/NS/translation.txt $(TESTDIR)/SOA/translation.txt $(TESTDIR)/BIG/translation.txt

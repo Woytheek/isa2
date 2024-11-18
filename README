@@ -7,6 +7,12 @@ This project monitors DNS queries and responses in real-time and from PCAP files
 
 ### Test files
 It has been tested on multiple test file with are included in the `test` directory.
+Tests can be run running the `sudo python3 test.py` script. The script will run the program with the test files and compare the output with the expected output. The script will print the results of the tests.
+Tests can be run like this:
+
+```bash
+make tests
+```
 
 ### Source files
 Source files are located in the `src` directory and include the following:
@@ -29,11 +35,11 @@ All source files are compiled into the `dns-monitor` executable using the provid
 
 ## How to build and run this program
 To build the program, navigate to the `xkucha30` directory and run `make` to compile the source files.
-```
+```bash
 make
 ```
 This will generate the `dns-monitor` executable that can be run for example like this
-```
+```bash
 sudo ./dns-monitor -p test/test5ipv6.pcap -d domain.txt -t translation.txt -v
 ```
 
@@ -45,6 +51,9 @@ Program will print the DNS questions of unsupported DNS record types and save th
 
 #### IPv4 and IPv6 in the same run
 Program supports both IPv4 and IPv6 addresses. The extension is that it can handle both types of addresses in the same run (as long as its the same interface). For example if the program is run with `-i lo` and the `dig @127.0.0.1 example.com` `dig @::1 example.com` are run, the program will handle both queries. Im not sure if this counts as an extension, but I wanted to mention it.
+
+#### Input arguments
+Input arguments can be parsed in any order. The program will handle the arguments correctly.
 
 ### Restrictions
 #### Packet headers
@@ -75,4 +84,12 @@ I am submitting the `xkucha30.tar` file containing the following:
     - `udp.h`
     - `translation.h`
 - `test` directory containing:
-    TODO: Add test files
+    - `test.py`
+    - `A` directory with test files
+    - `AAAA` directory with test files
+    - `BIG` directory with test files
+    - `CNAME` directory with test files
+    - `MX` directory with test files
+    - `NS` directory with test files
+    - `SOA` directory with test files
+

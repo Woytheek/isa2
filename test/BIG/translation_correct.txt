@@ -1,0 +1,6 @@
+ns.endora.cz 62.109.140.16
+ns.endora.cz 2001:1ab0:7e1e:220:ed::140:16
+ns.endoraland.com 62.109.140.4
+ns.endoraland.com 2001:1ab0:7e1e:220:ed::4
+sqost.cz 2001:1ab0:7e1e:220:ed::140:36
+sqost.cz 62.109.140.36
