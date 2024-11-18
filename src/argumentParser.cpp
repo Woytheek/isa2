@@ -38,7 +38,8 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
         {
             if (i + 1 >= argc || argv[i + 1][0] == '-')
             {
-                err(1, "Incorrect usage of -i. An interface name is expected.");
+                std::cerr << "Incorrect usage of -i. An interface name is expected." << std::endl;
+                exit(1);
             }
             out.interface = argv[i + 1]; // Interface
             out.i = true;                // Set the flag
@@ -48,7 +49,8 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
         {
             if (i + 1 >= argc || argv[i + 1][0] == '-')
             {
-                err(1, "Incorrect usage of -p. A PCAP file name is expected.");
+                std::cerr << "Incorrect usage of -p. A PCAP file name is expected." << std::endl;
+                exit(1);
             }
             out.pcapFile = argv[i + 1]; // PCAP file
             out.p = true;
@@ -62,7 +64,8 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
         {
             if (i + 1 >= argc || argv[i + 1][0] == '-')
             {
-                err(1, "Incorrect usage of -d. A domains file name is expected.");
+                std::cerr << "Incorrect usage of -d. A domains file name is expected." << std::endl;
+                exit(1);
             }
             out.domainsFile = argv[i + 1]; // Domains file
             out.d = true;
@@ -72,7 +75,8 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
         {
             if (i + 1 >= argc || argv[i + 1][0] == '-')
             {
-                err(1, "Incorrect usage of -t. A translations file name is expected.");
+                std::cerr << "Incorrect usage of -t. A translations file name is expected." << std::endl;
+                exit(1);
             }
             out.translationsFile = argv[i + 1]; // Translations file
             out.t = true;
@@ -80,7 +84,8 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
         }
         else
         {
-            err(1, "Unknown argument: %s\n", argument.c_str());
+            std::cerr << "Unknown argument: " << argument << std::endl;
+            exit(1);
         }
     }
 }

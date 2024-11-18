@@ -24,7 +24,7 @@ bool PCAPParser::openFile()
     handle = pcap_open_offline(args.pcapFile.c_str(), errbuf);
     if (handle == nullptr)
     {
-        fprintf(stderr, "Could not open file %s: %s\n", args.pcapFile.c_str(), errbuf);
+        std::cerr << "Could not open file " << args.pcapFile << ": " << errbuf << "\n";
         return false;
     }
     return true;

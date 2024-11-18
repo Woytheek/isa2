@@ -38,10 +38,13 @@ public:
     ~UDPConnection();
 
     /**
-     * @brief Starts the UDP connection by configuring the interface, creating a socket,
-     *        and processing incoming packets in a loop.
+     * @brief Starts the UDP connection, creates raw sockets, and processes incoming packets.
      *
-     * @return int Returns 0 on success, -1 on failure to configure interface or create socket.
+     * This function creates both IPv4 and IPv6 raw sockets, sets up a signal handler for graceful termination,
+     * and enters a loop where it waits for incoming packets on either socket using `select`. Upon receiving a packet,
+     * it checks if the packet is a DNS packet, and if so, processes the packet using a DNS parser.
+     *
+     * @return Returns 0 on successful completion (this is never reached due to the infinite loop).
      */
     int start();
 
@@ -57,12 +60,13 @@ public:
 private:
     inputArguments args; // Parsed input arguments
     int udp_socket;      // UDP socket descriptor
+    int udp_socket6;     // UDP socket descriptor for IPv6
     std::string ipStr;   // IP address as string
 
     /**
-     * @brief Creates the raw socket needed for UDP communication.
+     * @brief Creates the raw sockets needed for UDP communication.
      *
-     * @return bool Returns true if socket creation is successful, false otherwise.
+     * @return bool Returns true if sockets creation is successful, false otherwise.
      */
     bool createSocket();
 

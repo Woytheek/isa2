@@ -79,7 +79,7 @@ void DNSParser::parseDNSHeader(const std::vector<uint8_t> &packet, DNSHeader *he
 {
     if (packet.size() < 12)
     {
-        std::cerr << "Chyba: Příliš krátký paket pro parsování DNS hlavičky!" << std::endl;
+        std::cerr << "Packet too short for parsing DNS header!" << std::endl;
         return;
     }
 
@@ -566,10 +566,6 @@ void printBytes(const unsigned char *data, int size)
 std::string DNSParser::ipv6ToString(const std::vector<uint8_t> &rData)
 {
     std::string ipv6;
-    if (rData.size() != 16)
-    {
-        return "Invalid IPv6 address data size.";
-    }
 
     uint16_t blocks[8];
     for (size_t i = 0; i < 8; ++i)
@@ -620,7 +616,6 @@ int DNSParser::isDNSPacket(const u_char *packet, int length)
     {
         return -1;
     }
-
     for (int offset = 0; offset < length - 1; offset++)
     {
         // ipv4 packet check
@@ -650,7 +645,7 @@ int DNSParser::isDNSPacket(const u_char *packet, int length)
         }
 
         // ipv6 packet check (similar to ipv4)
-        if (packet[offset] == 0x60 && packet[offset + 1] == 0x00 && packet[offset - 1] == 0xDD && packet[offset - 2] == 0x86)
+        if (packet[offset] == 0x60 && packet[offset - 1] == 0xDD && packet[offset - 2] == 0x86)
         {
             IPInfo ipInfo;
             struct ip6_hdr *ip6_header = (struct ip6_hdr *)(packet + offset);

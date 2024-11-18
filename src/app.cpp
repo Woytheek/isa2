@@ -34,7 +34,7 @@ int DNSMonitor::run()
         // Handle UDP connection if no PCAP file is provided
         if (!handleUDPConnection())
         {
-            std::cerr << "Failed to establish UDP connection!" << std::endl;
+            std::cerr << "Error while establishing the UDP connection." << std::endl;
             return 1;
         }
     }
@@ -54,7 +54,6 @@ bool DNSMonitor::handleUDPConnection()
         UDPConnection udpConnection(args);
         return udpConnection.start(); // Start the UDP connection
     }
-
-    std::cerr << "Error: Interface not provided!" << std::endl;
+    std::cerr << "No interface provided for UDP connection." << std::endl;
     return 1;
 }
