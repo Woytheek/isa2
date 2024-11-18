@@ -1,10 +1,20 @@
+/**
+ * @file pcap.cpp
+ * @author Vojtěch Kuchař xkucha30
+ * @brief Implements functionality for opening and parsing PCAP files.
+ *        Includes methods for extracting DNS packets and managing PCAP file operations.
+ * @version 1.0
+ * @date 2024-11-17
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
+
 #include "../include/pcap.h"
 
 PCAPParser::PCAPParser(const inputArguments &args)
     : errbuf{}, handle(nullptr), args(args)
-{ // Match order in header file
-
-    // Initialize the error buffer with an empty string
+{
     errbuf[0] = '\0';
 }
 
@@ -31,25 +41,23 @@ void PCAPParser::closeFile()
 
 int PCAPParser::getDNSOffset(const unsigned char *packet, int length) const
 {
-    // Placeholder function to check if a packet is DNS and return the offset
+
     return DNSParser::isDNSPacket(packet, length);
 }
 
 int PCAPParser::parseFile()
 {
-    // Open the file and check for success
+    struct pcap_pkthdr header;
+    const unsigned char *packet;
+
     if (!openFile())
     {
         return 1;
     }
-    struct pcap_pkthdr header;
-    const unsigned char *packet;
 
     // Loop through packets
     while ((packet = pcap_next(handle, &header)) != nullptr)
     {
-        // Check if packet is DNS and get offset
-
         DNSParser parser(args);
         int offset = getDNSOffset(packet, header.len);
         if (offset != -1)
@@ -58,7 +66,6 @@ int PCAPParser::parseFile()
         }
     }
 
-    // Close the file after parsing
     closeFile();
     return 0;
 }

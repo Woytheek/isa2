@@ -1,3 +1,14 @@
+/**
+ * @file translation.cpp
+ * @author Vojtěch Kuchař xkucha30
+ * @brief Implements functionality for managing domain translations and file operations.
+ * @version 1.0
+ * @date 2024-11-17
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
+
 #include "../include/translation.h"
 
 void Translation::loadTranslation(std::string domain, std::string ip)
@@ -57,6 +68,7 @@ std::string Translation::removeTrailingDots(const std::string &line)
         {
             word.pop_back();
         }
+
         // Add the modified word to the result
         if (!result.empty())
         {
@@ -70,10 +82,10 @@ std::string Translation::removeTrailingDots(const std::string &line)
 
 bool Translation::removeEmptyLines(std::string &filePath)
 {
-    std::ifstream inputFile(filePath); // Open the file for reading
+    std::ifstream inputFile(filePath);
     if (!inputFile.is_open())
     {
-        return false; // Failed to open file
+        return false;
     }
 
     std::ostringstream outputStream; // String stream to accumulate non-empty lines
@@ -83,9 +95,9 @@ bool Translation::removeEmptyLines(std::string &filePath)
     while (std::getline(inputFile, line))
     {
         // Trim leading and trailing whitespaces
-        line = removeTrailingDots(line); // Optional: can modify this to trim whitespace
+        line = removeTrailingDots(line);
         if (!line.empty())
-        { // Only write non-empty lines
+        {
             outputStream << line << "\n";
         }
     }
@@ -96,16 +108,14 @@ bool Translation::removeEmptyLines(std::string &filePath)
     file.open(filePath, std::ios::out | std::ios::trunc);
     if (!file.is_open())
     {
-        return false; // Failed to open file for writing
+        return false;
     }
 
-    // Write the cleaned content back to the file
     file << outputStream.str();
     closeFile();
     return true;
 }
 
-// Writes a line to the file
 bool Translation::writeLine(const std::string &line, std::string &filePath)
 {
     std::string newLine = removeTrailingDots(line);
@@ -116,7 +126,6 @@ bool Translation::writeLine(const std::string &line, std::string &filePath)
         return false;
     }
 
-    // Ensure file is open for both reading and writing
     if (!openFile(filePath))
     {
         return false;
@@ -137,10 +146,9 @@ bool Translation::writeLine(const std::string &line, std::string &filePath)
                 break;
             }
         }
-        inFile.close(); // Close the file after checking
+        inFile.close();
     }
 
-    // If the line doesn't exist, write it to the file
     if (!lineExists)
     {
         file << newLine << std::endl;

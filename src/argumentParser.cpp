@@ -1,8 +1,19 @@
+/**
+ * @file argumentParser.cpp
+ * @author Vojtěch Kuchař xkucha30
+ * @brief Implements functionality to extract and store input arguments, such as
+ *        interface names, PCAP files, and domain translation files.
+ * @version 1.0
+ * @date 2024-11-17
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
+
 #include "../include/argumentParser.h"
 
 void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
 {
-    // Print help if needed.
     if (argc == 2 && (std::string(argv[1]) == "-h" || std::string(argv[1]) == "--help"))
     {
         printf("Usage: %s (-i <interface> | -p <pcapfile>) [-v] [-d <domainsfile>] [-t <translationsfile>]\n"
@@ -16,8 +27,7 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
         exit(0);
     }
 
-    // Initialize default values (if necessary)
-    out.v = false; // Assume there's a field for verbose mode
+    out.v = false;
 
     // Parse the command-line arguments.
     for (int i = 1; i < argc; ++i)
@@ -41,7 +51,7 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
                 err(1, "Incorrect usage of -p. A PCAP file name is expected.");
             }
             out.pcapFile = argv[i + 1]; // PCAP file
-            out.p = true;               // Set the flag
+            out.p = true;
             ++i;
         }
         else if (argument == "-v")
@@ -54,8 +64,8 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
             {
                 err(1, "Incorrect usage of -d. A domains file name is expected.");
             }
-            out.domainsFile = argv[i + 1]; // Assuming out has a field for domains file
-            out.d = true;                  // Set the flag
+            out.domainsFile = argv[i + 1]; // Domains file
+            out.d = true;
             ++i;
         }
         else if (argument == "-t")
@@ -64,8 +74,8 @@ void argumentParser::parseArguments(int argc, char *argv[], inputArguments &out)
             {
                 err(1, "Incorrect usage of -t. A translations file name is expected.");
             }
-            out.translationsFile = argv[i + 1]; // Assuming out has a field for translations file
-            out.t = true;                       // Set the flag
+            out.translationsFile = argv[i + 1]; // Translations file
+            out.t = true;
             ++i;
         }
         else

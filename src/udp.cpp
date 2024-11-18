@@ -1,3 +1,14 @@
+/**
+ * @file udp.cpp
+ * @author Vojtěch Kuchař xkucha30
+ * @brief Implements the UDPConnection class for managing UDP network connections.
+ * @version 1.0
+ * @date 2024-11-17
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
+
 #include "../include/udp.h"
 
 #define PORT 53          // Typically for DNS
@@ -6,46 +17,32 @@
 // Declare the global pointer to store the UDPConnection instance
 UDPConnection *g_udpConnectionInstance = nullptr;
 
-#define PORT 53          // Typically for DNS
-#define BUFFER_SIZE 1522 // Maximum size for Ethernet packet
-
-// Constructor for UDPConnection class
 UDPConnection::UDPConnection(const inputArguments &args) : args(args), udp_socket(-1)
 {
     // Set the global instance pointer to 'this'
     g_udpConnectionInstance = this;
 }
 
-// Destructor for UDPConnection class
 UDPConnection::~UDPConnection()
 {
     if (udp_socket >= 0)
     {
-        close(udp_socket); // Clean up and close the socket
+        close(udp_socket);
     }
-    // Set the global instance pointer to nullptr on destruction
     g_udpConnectionInstance = nullptr;
 }
 
-// Public method to start the UDP connection
 int UDPConnection::start()
 {
-    // Step 1: Configure network interface
-    if (!configureInterface())
-    {
-        return -1; // Return if interface configuration fails
-    }
-
-    // Step 2: Create the socket
     if (!createSocket())
     {
-        return -1; // Return if socket creation fails
+        return -1;
     }
 
     // Register signal handler for graceful termination
     setupSignalHandler();
 
-    // Step 3: Process incoming packets in a loop
+    // Process incoming packets in a loop
     while (true)
     {
         unsigned char buffer[BUFFER_SIZE];
@@ -53,7 +50,6 @@ int UDPConnection::start()
         socklen_t client_addr_len = sizeof(client_addr);
         memset(buffer, 0, BUFFER_SIZE); // Clear the buffer
 
-        // Receive raw packet (blocking call)
         ssize_t bytes_received = recvfrom(udp_socket, buffer, BUFFER_SIZE, 0,
                                           (struct sockaddr *)&client_addr, &client_addr_len);
 
@@ -78,7 +74,6 @@ int UDPConnection::start()
     return 0; // This is never reached due to the infinite loop
 }
 
-// Private method to handle signal for graceful shutdown
 void UDPConnection::handleSignal(int signum)
 {
     printf("\nTerminating the server gracefully...\n");
@@ -86,39 +81,28 @@ void UDPConnection::handleSignal(int signum)
     {
         close(udp_socket); // Close the socket if it's open
     }
-    exit(signum); // Exit the program
+    exit(signum);
 }
 
-// Static method to handle signals from outside the class context
 void UDPConnection::signalHandler(int signum, UDPConnection *instance)
 {
-    instance->handleSignal(signum); // Call the instance's handleSignal method
+    instance->handleSignal(signum);
 }
 
-// Method to set up the signal handler
 void UDPConnection::setupSignalHandler()
 {
     // Use the global instance pointer directly in the signal handler
     signal(SIGINT, [](int signum)
            {
-        // Now, we use the global pointer 'g_udpConnectionInstance' directly in the lambda
+        // Global pointer 'g_udpConnectionInstance' directly in the lambda
         if (g_udpConnectionInstance) {
             signalHandler(signum, g_udpConnectionInstance); // Call the signalHandler with the global instance
         } });
 }
 
-// Method to configure network interface (dummy for now)
-bool UDPConnection::configureInterface()
-{
-    // Add logic to configure the network interface based on the args.interface
-    // printf("Configuring network interface: %s\n", args.interface.c_str());
-    return true;
-}
-
-// Method to create a raw socket
 bool UDPConnection::createSocket()
 {
-    udp_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP)); // Create raw socket for IP packets
+    udp_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
     if (udp_socket < 0)
     {
         perror("Error: Could not create socket");

@@ -1,8 +1,21 @@
+/**
+ * @file app.cpp
+ * @author Vojtěch Kuchař xkucha30
+ * @brief Implements the DNSMonitor class, providing the logic for DNS monitoring tasks.
+ *        This includes parsing input arguments, handling PCAP file parsing, and
+ *        establishing UDP connections for real-time monitoring.
+ * @version 1.0
+ * @date 2024-11-17
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
+
 #include "../include/app.h"
 
 DNSMonitor::DNSMonitor(int argc, char *argv[])
 {
-    parser.parseArguments(argc, argv, args); // Parse arguments in constructor
+    parser.parseArguments(argc, argv, args);
 }
 
 int DNSMonitor::run()

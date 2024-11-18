@@ -1,7 +1,10 @@
 /**
  * @file argumentParser.h
- * @author Vojtěch Kuchař (xkucha30@stud.fit.vutbr.cz)
- * @brief Handles the input arguments.
+ * @author Vojtěch Kuchař xkucha30
+ * @brief Defines the inputArguments structure and the argumentParser class for
+ *        parsing and handling command-line arguments.
+ *        Provides functionality to extract and store input arguments, such as
+ *        interface names, PCAP files, and domain translation files.
  * @version 1.0
  * @date 2024-11-17
  *
@@ -32,11 +35,14 @@ class argumentParser
 {
 public:
     /**
-     * @brief Handles the input arguments. Prints help if needed.
+     * @brief Parses the command-line arguments and stores them in the provided structure.
+     *        This function processes various flags (e.g., `-i`, `-p`, `-v`, `-d`, `-t`) and
+     *        stores the respective values in the `inputArguments` structure. It also
+     *        handles the `-h` or `--help` flag to display usage instructions.
      *
-     * @param argc Length of argv.
-     * @param argv Array of arguments.
-     * @param out Struct for storing the arguments.
+     * @param argc The number of command-line arguments.
+     * @param argv The array of command-line arguments.
+     * @param out The structure to store the parsed arguments.
      */
     static void parseArguments(int argc, char *argv[], inputArguments &out);
 };

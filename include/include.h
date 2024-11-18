@@ -1,26 +1,37 @@
+/**
+ * @file include.h
+ * @author Vojtěch Kuchař xkucha30
+ * @brief Includes all the libraries that are used in the project.
+ * @version 1.0
+ * @date 2024-11-17
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
+
 #pragma once
 
 #include <set>
 #include <stdio.h>
 #include <pcap.h>
 #include <iostream>
-#include <cstring>      // For memset, memcpy
-#include <sys/socket.h> // For socket, bind, recvfrom
-#include <netinet/in.h> // For sockaddr_in, htons, htonl
-#include <arpa/inet.h>  // For inet_addr
-#include <unistd.h>     // For close
+#include <cstring>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 #include <err.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <netinet/ip.h>
-#include <netinet/ip6.h> // For IPv6 headers
+#include <netinet/ip6.h>
 #include <netinet/udp.h>
 #include <string.h>
 #include <ifaddrs.h>
 #include <sys/time.h>
 #include <net/if.h>
 #include <string>
-#include <linux/if_ether.h> // Include this header for ETH_P_IP
+#include <linux/if_ether.h>
 #include <cstdint>
 #include <vector>
 #include <cstdint>
