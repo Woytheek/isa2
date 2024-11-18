@@ -1,0 +1,78 @@
+# dns-monitor README
+Author: Vojtěch Kuchař - xkucha30
+
+Date: 2024-11-17
+## Summary
+This project monitors DNS queries and responses in real-time and from PCAP files. It is implemented in C++ and provides insights into DNS traffic analysis.
+
+### Test files
+It has been tested on multiple test file with are included in the `test` directory.
+
+### Source files
+Source files are located in the `src` directory and include the following:
+
+- `dns-monitor.cpp`: The entry point of the DNS monitor application.
+
+- `app.cpp`: Implements the DNSMonitor class, providing the logic for DNS monitoring tasks. This includes parsing input arguments, handling PCAP file parsing, and establishing UDP connections for real-time monitoring.
+
+- `argumentParser.cpp`: Implements functionality to extract and store input arguments, such as interface names, PCAP files, and domain translation files.
+
+- `dns.cpp`: Implements functionality for handling DNS packets, including parsing,bextracting data, and printing details. Defines structures and classes for managing DNS headers, sections, and resource records.
+
+- `pcap.cpp`: Implements functionality for opening and parsing PCAP files. Includes methods for extracting DNS packets and managing PCAP file operations.
+
+- `udp.cpp`: Implements the UDPConnection class for managing UDP network connections.
+
+- `translation.cpp`: Implements functionality for managing domain translations and file operations. Includes methods for loading, printing, and manipulating domain-IP mappings, as well as handling related file I/O tasks.
+
+All source files are compiled into the `dns-monitor` executable using the provided Makefile. All of them have .h files with corresponding declarations.
+
+## How to build and run this program
+To build the program, navigate to the `xkucha30` directory and run `make` to compile the source files.
+```
+make
+```
+This will generate the `dns-monitor` executable that can be run for example like this
+```
+sudo ./dns-monitor -p test/test5ipv6.pcap -d domain.txt -t translation.txt -v
+```
+
+## Extensions and restrictions
+
+### Extensions
+#### Unsupported DNS record types
+Program will print the DNS questions of unsupported DNS record types and save the domain names in domains file (if prompted). It will also print (and save) the DNS records of responses to that question that are supported.
+
+#### IPv4 and IPv6 in the same run
+Program supports both IPv4 and IPv6 addresses. The extension is that it can handle both types of addresses in the same run (as long as its the same interface). For example if the program is run with `-i lo` and the `dig @127.0.0.1 example.com` `dig @::1 example.com` are run, the program will handle both queries. Im not sure if this counts as an extension, but I wanted to mention it.
+
+### Restrictions
+#### Packet headers
+The program was tested on Ethernet II headers and Linux cooked headers. It should work on other headers as well, but i could find a way to test it.
+
+#### End progarm run
+The program can be ended by pressing `Ctrl+C` or by sending a `SIGINT` signal. The program will then safely exit. Other signals was not tested.
+
+## List of submitted files
+I am submitting the `xkucha30.tar` file containing the following:
+- `README`
+- `manual.pdf`
+- `Makefile`
+- `src` directory containing:
+    - `dns-monitor.cpp`
+    - `app.cpp`
+    - `argumentParser.cpp`
+    - `dns.cpp`
+    - `pcap.cpp`
+    - `udp.cpp`
+    - `translation.cpp`
+- `include` directory containing:
+    - `include.h`
+    - `app.h`
+    - `argumentParser.h`
+    - `dns.h`
+    - `pcap.h`
+    - `udp.h`
+    - `translation.h`
+- `test` directory containing:
+    TODO: Add test files

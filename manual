@@ -1,0 +1,114 @@
+# DNS monitor Documentation
+Author: Vojtěch Kuchař - xkucha30
+
+Date: 2024-11-17
+## Summary
+
+## Theory
+
+### DNS Architecture
+
+The DNS (Domain Name System) architecture follows a hierarchical, distributed model to translate human-readable domain names into IP addresses. It consists of several key components:
+
+- **DNS Resolver**: The resolver is responsible for initiating the query to find the IP address associated with a domain name.
+  
+- **DNS Server**: A server that stores the DNS records for domain names. When a resolver sends a query, the DNS server responds with the appropriate information or forwards the request to another server if it does not have the record.
+
+DNS servers store records that map domain names to IP addresses. These records can be of different types, the most important for the nature of this project are A, AAAA, NS, MX, SOA, CNAME and SRV. Here is a brief description of each:
+
+- **A Record**: Maps a domain name to an IPv4 address.
+- **AAAA Record**: Maps a domain name to an IPv6 address.
+- **NS (Name Server) Record**: Specifies authoritative name servers for a domain.
+- **MX (Mail Exchange) Record**: Directs email messages to the correct mail server for a domain.
+- **SOA (Start of Authority) Record**: Contains administrative information about a domain.
+- **CNAME (Canonical Name) Record**: Aliases one domain name to another.
+- **SRV (Service) Record**: Specifies the location of services in a domain.
+
+More about the individual types of basic DNS records can be found in the [RFC 1035](https://tools.ietf.org/html/rfc1035)
+document.
+
+
+The DNS operation process includes:
+
+- **Query**: The process where a client (resolver) sends a request for a domain name to be resolved into an IP address.
+- **Response**: The server's answer to the resolver, either with the requested information or a referral to another DNS server.
+- **Caching**: To speed up future requests, both resolvers and DNS servers store responses in a local cache for a predefined time (TTL - Time to Live).
+
+In nature of this project, we are focusing on monitoring DNS queries and responses.
+
+## Implementation
+This section describes the implementation of the DNS monitor application. The application is designed to capture and analyze DNS queries and responses in real-time and from PCAP files. The application is implemented in C++. The following subsections provide an overview of the application's architecture, key components, and testing procedures.
+
+TODO: Add more details about the implementation.
+
+### Source files
+
+### **dns-monitor.cpp**
+The entry point of the DNS monitor application. The `run()` method of the DNSMonitor class is called to start the packet capture and DNS packets.
+
+1. **Main Function**:  
+   - `int main(int argc, char *argv[])`: The entry point of the DNS monitor application. It performs the following actions:
+     - **DNSMonitor Initialization**: Creates an instance of the `DNSMonitor` class, passing command-line arguments.
+     - **Monitoring Execution**: Calls the `run()` method of the `DNSMonitor` class to start the packet capture and DNS query analysis process.
+
+### **app.cpp**
+
+The `app.cpp` file implements the `DNSMonitor` class, which handles DNS traffic monitoring. It processes command-line arguments via argumentParser class and either analyzes a PCAP file or establishes a real-time UDP connection based on the input. Key functions include parsing the PCAP file with `PCAPParser` or setting up a UDP connection for live monitoring, depending on the provided arguments.
+
+1. **DNSMonitor Constructor**:  
+   - `DNSMonitor::DNSMonitor(int argc, char *argv[])`: Initializes the `DNSMonitor` class and parses the command-line arguments using the `parser.parseArguments` method to store them in the `args` object.
+
+2. **Run Method**:  
+   - `int DNSMonitor::run()`: Determines whether to handle a PCAP file or establish a real-time UDP connection based on the input arguments:
+     - **PCAP File Handling**: If the `-p` flag is provided, it calls `handlePCAPFile` to process the PCAP file.
+     - **UDP Connection Handling**: If no PCAP file is specified, it calls `handleUDPConnection` to set up a UDP connection for live monitoring.
+
+3. **Handle PCAP File**:  
+   - `bool DNSMonitor::handlePCAPFile()`: Processes a PCAP file using the `PCAPParser` class and returns `true` if parsing is successful.
+
+4. **Handle UDP Connection**:  
+   - `bool DNSMonitor::handleUDPConnection()`: Establishes a UDP connection for live monitoring:
+     - **UDP Connection Setup**: Creates and starts the `UDPConnection`. If successful, it returns `true`.
+
+
+* ### Header files
+
+## Testing
+
+### Test Environment
+
+### Test Scenarios
+
+1. **Filter and IP Address Variations**:
+2. **Attribute Options**:
+3. **Port Configuration**:
+4. **Comparative Output Analysis**:
+
+### Testing Results
+
+- **Success Rate**:
+- **Output Comparison**:
+- **Test Coverage**:
+
+### Additional Considerations
+
+- **Error Handling**:
+- **Performance Metrics**:
+
+## Bibliography
+
+### Sources
+
+#### LDAP Specification:
+
+- **RFC 2251**: _Lightweight Directory Access Protocol (v3)_. Internet Engineering Task Force (IETF), 1997. Available from: https://www.rfc-editor.org/rfc/rfc2251.txt.
+- **RFC 2252**: _Lightweight Directory Access Protocol (v3): Attribute Syntax Definitions_. Internet Engineering Task Force (IETF), 1997. Available from: https://www.rfc-editor.org/rfc/rfc2252.txt.
+- **RFC 2254**: _The String Representation of LDAP Search Filters_. Internet Engineering Task Force (IETF), 1997. Available from: https://www.rfc-editor.org/rfc/rfc2254.txt.
+- **RFC 4511**: _Lightweight Directory Access Protocol (LDAP): The Protocol_. Internet Engineering Task Force (IETF), 2006. Available from: https://www.rfc-editor.org/rfc/rfc4511.txt.
+- Howes, T.A., Smith, M.C., & Gordon, G.S. (2002). _LDAP Directory Services_. Addison-Wesley. ISBN: [Insert ISBN Here].
+
+#### ASN.1 Specification:
+
+- **ITU-T**: _ASN.1: Introduction_. International Telecommunication Union. Available from: http://www.itu.int/en/ITU-T/asn1/Pages/introduction.aspx.
+- **OSS Nokalva**: _ASN.1 Books, Whitepapers, and Publications_. Available from: http://www.oss.com/asn1/resources/books-whitepapers-pubs/asn1-books.html.
+- **NTOP**: _ASN.1 Tutorial_. Available from: http://luca.ntop.org/Teaching/Appunti/asn1.html.

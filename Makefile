@@ -7,7 +7,7 @@ LDFLAGS = -lm -lpcap
 SRCDIR = src
 INCDIR = include
 OBJDIR = obj
-FILES = files
+FILES = .
 BINDIR = .
 
 # Source and object files
@@ -31,7 +31,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(INCDIR)/*.h
 
 # Clean target to remove compiled objects and binaries
 clean:
-	rm -rf $(OBJDIR) $(TARGET) $(CLIENT) $(FILES)/*.txt
+	rm -rf $(OBJDIR) $(TARGET) $(CLIENT) $(FILES)/domain.txt $(FILES)/translation.txt
 
 # Run the DNS monitor (requires sudo for privileged port)
 run: $(TARGET)
@@ -39,4 +39,4 @@ run: $(TARGET)
 
 # Run tests by launching the DNS monitor and using 'dig' as a subprocess
 tests: 
-	./dns-monitor & nslookup -port=1053 seznam.cz 127.0.0.1
+	./dns-monitor -p test/test5ipv6.pcap -d domain.txt -t translation.txt -v
